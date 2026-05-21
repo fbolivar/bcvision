@@ -4,8 +4,8 @@ import { createAdminClient } from '@/lib/supabase/server'
 import { z } from 'zod'
 
 const schema = z.object({
-  brand_name:               z.string().max(80).optional(),
-  brand_color:              z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
+  brand_name:               z.string().max(80).optional().nullable(),
+  brand_color:              z.string().regex(/^#[0-9a-fA-F]{6}$/).optional().nullable(),
   logo_url:                 z.string().url().optional().nullable(),
   retention_days:           z.number().int().min(7).max(3650).optional(),
   alert_email_enabled:      z.boolean().optional(),

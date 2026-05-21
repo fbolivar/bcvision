@@ -20,36 +20,25 @@ function ResetPasswordForm() {
   const [sessionOk, setSessionOk] = useState(false)
 
   useEffect(() => {
-    let resolved = false
+    const hash = window.location.hash // ej: #access_token=XXX&refresh_token=YYY&type=recovery
+    const params = new URLSearchParams(hash.replace(/^#/, ''))
+    const accessToken  = params.get('access_token')
+    const refreshToken = params.get('refresh_token')
+    const type         = params.get('type')
 
-    const resolve = (ok: boolean) => {
-      if (resolved) return
-      resolved = true
-      setSessionOk(ok)
+    if (!accessToken || !refreshToken || type !== 'recovery') {
       setChecking(false)
+      return
     }
 
-    // onAuthStateChange replica el estado actual a nuevos suscriptores —
-    // si el hash ya fue procesado, PASSWORD_RECOVERY / SIGNED_IN dispara igual
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'PASSWORD_RECOVERY') {
-        resolve(true)
-      } else if (event === 'SIGNED_IN' && session) {
-        // Flujo hash: Supabase firma al usuario y luego emite PASSWORD_RECOVERY
-        // Aquí esperamos un tick más para ver si llega PASSWORD_RECOVERY
-        setTimeout(() => resolve(true), 200)
-      } else if (event === 'SIGNED_OUT') {
-        resolve(false)
-      }
-    })
-
-    // Timeout de seguridad: si en 10s no llegó ningún evento, mostrar error
-    const timeout = setTimeout(() => resolve(false), 10_000)
-
-    return () => {
-      subscription.unsubscribe()
-      clearTimeout(timeout)
-    }
+    // Establecer sesión manualmente desde el hash — @supabase/ssr no lo hace automático
+    supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken })
+      .then(({ error: err }) => {
+        setSessionOk(!err)
+        setChecking(false)
+        // Limpiar el hash de la URL sin recargar
+        history.replaceState(null, '', window.location.pathname)
+      })
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 

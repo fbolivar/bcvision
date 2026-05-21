@@ -16,15 +16,19 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         {/* Logo */}
         <div className="flex items-center gap-3 animate-fade-in">
           <div className="relative">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#3b82f6] to-[#8b5cf6] flex items-center justify-center glow-blue">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#3b82f6] to-[#6366f1] flex items-center justify-center glow-blue overflow-hidden">
+              <svg width="26" height="26" viewBox="0 0 32 32" fill="none">
+                <path d="M16 2L28 6.8V17C28 23.8 22.5 29.2 16 31C9.5 29.2 4 23.8 4 17V6.8L16 2Z" fill="white" fillOpacity="0.15"/>
+                <path d="M8 17Q16 9.5 24 17Q16 24.5 8 17Z" fill="none" stroke="white" strokeWidth="2" strokeLinejoin="round"/>
+                <circle cx="16" cy="17" r="4.5" fill="white"/>
+                <circle cx="16" cy="17" r="2.2" fill="#3b82f6"/>
+                <circle cx="17.2" cy="15.8" r="0.8" fill="white" opacity="0.7"/>
               </svg>
             </div>
-            <div className="absolute -inset-1 rounded-xl bg-gradient-to-br from-[#3b82f6] to-[#8b5cf6] opacity-20 blur-sm animate-glow-pulse" />
+            <div className="absolute -inset-1 rounded-xl bg-gradient-to-br from-[#3b82f6] to-[#6366f1] opacity-20 blur-sm animate-glow-pulse" />
           </div>
           <div>
-            <div className="font-bold text-white text-xl tracking-tight">FirewallIQ</div>
+            <div className="font-bold text-white text-xl tracking-tight">BC<span style={{ color: '#3b82f6' }}>Vision</span></div>
             <div className="text-[10px] text-[#64748b] tracking-widest uppercase">Security Analytics</div>
           </div>
         </div>
@@ -73,13 +77,13 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
               ))}
             </div>
             <div className="text-xs text-[#64748b]">
-              Equipos de seguridad confían en FirewallIQ
+              Equipos de seguridad confían en BCVision
             </div>
           </div>
         </div>
 
         <p className="text-xs text-[#334155] animate-fade-in" style={{ animationDelay: '0.3s' }}>
-          © 2025 FirewallIQ · BC Fabric SAS · Todos los derechos reservados
+          © 2025 BCVision · BC Fabric SAS · Todos los derechos reservados
         </p>
       </div>
 

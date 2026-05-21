@@ -89,7 +89,7 @@ export function OrgSettingsForm({ org, settings, isAdmin }: OrgSettingsProps) {
         <div>
           <label className="block text-[10px] font-bold text-[#334155] uppercase tracking-widest mb-1.5">Nombre de marca</label>
           <input value={brandName} onChange={e => setBrandName(e.target.value)} disabled={!isAdmin}
-            placeholder="Ej: BC Security · FirewallIQ" className={inputClass(!isAdmin)} />
+            placeholder="Ej: BC Security · BCVision" className={inputClass(!isAdmin)} />
           <p className="text-[10px] text-[#1e3a5f] mt-1">Aparece en encabezado y pie de reportes PDF</p>
         </div>
 

@@ -5,8 +5,19 @@ import './globals.css'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'FirewallIQ — Firewall Analytics Platform',
-  description: 'Plataforma SaaS multi-tenant para análisis de logs de firewalls en tiempo real',
+  title: 'BCVision — Firewall Analytics Platform',
+  description: 'Plataforma SaaS de análisis de firewall y ciberseguridad en tiempo real para empresas colombianas. Dashboard, alertas, compliance PCI DSS / ISO 27001 y reportes ejecutivos PDF.',
+  icons: {
+    icon:     [{ url: '/icon.svg', type: 'image/svg+xml' }],
+    shortcut: '/icon.svg',
+    apple:    '/icon.svg',
+  },
+  openGraph: {
+    title:       'BCVision — Firewall Analytics Platform',
+    description: 'Visibilidad total de tu red. Alertas, compliance y reportes en tiempo real.',
+    siteName:    'BCVision',
+    type:        'website',
+  },
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

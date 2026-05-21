@@ -41,10 +41,15 @@ export function LoginForm() {
     <div className="w-full max-w-md animate-scale-in">
       {/* Mobile logo */}
       <div className="flex items-center gap-3 mb-8 lg:hidden">
-        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#3b82f6] to-[#8b5cf6] flex items-center justify-center glow-blue">
-          <ShieldCheck className="w-5 h-5 text-white" />
+        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#3b82f6] to-[#6366f1] flex items-center justify-center glow-blue overflow-hidden">
+          <svg width="22" height="22" viewBox="0 0 32 32" fill="none">
+            <path d="M16 2L28 6.8V17C28 23.8 22.5 29.2 16 31C9.5 29.2 4 23.8 4 17V6.8L16 2Z" fill="white" fillOpacity="0.18"/>
+            <path d="M8 17Q16 9.5 24 17Q16 24.5 8 17Z" fill="none" stroke="white" strokeWidth="2" strokeLinejoin="round"/>
+            <circle cx="16" cy="17" r="4.5" fill="white"/>
+            <circle cx="16" cy="17" r="2.2" fill="#3b82f6"/>
+          </svg>
         </div>
-        <span className="font-bold text-white text-lg">FirewallIQ</span>
+        <span className="font-bold text-white text-lg">BC<span className="text-[#3b82f6]">Vision</span></span>
       </div>
 
       {/* Glass card */}

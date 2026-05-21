@@ -88,15 +88,19 @@ export function Sidebar({ role = 'viewer' }: { role?: string }) {
       <div className="relative px-5 py-5 border-b border-[#0f2038]">
         <Link href={isMssp ? '/admin' : '/dashboard'} className="flex items-center gap-3 group">
           <div className="relative flex-shrink-0">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#3b82f6] to-[#8b5cf6] flex items-center justify-center transition-all duration-300 group-hover:glow-blue">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#3b82f6] to-[#6366f1] flex items-center justify-center transition-all duration-300 group-hover:glow-blue overflow-hidden">
+              <svg width="22" height="22" viewBox="0 0 32 32" fill="none">
+                <path d="M16 2L28 6.8V17C28 23.8 22.5 29.2 16 31C9.5 29.2 4 23.8 4 17V6.8L16 2Z" fill="white" fillOpacity="0.18"/>
+                <path d="M8 17Q16 9.5 24 17Q16 24.5 8 17Z" fill="none" stroke="white" strokeWidth="2" strokeLinejoin="round"/>
+                <circle cx="16" cy="17" r="4.5" fill="white"/>
+                <circle cx="16" cy="17" r="2.2" fill="#3b82f6"/>
+                <circle cx="17.2" cy="15.8" r="0.8" fill="white" opacity="0.7"/>
               </svg>
             </div>
-            <div className="absolute -inset-0.5 rounded-xl bg-gradient-to-br from-[#3b82f6]/30 to-[#8b5cf6]/30 blur opacity-0 group-hover:opacity-100 transition-opacity" />
+            <div className="absolute -inset-0.5 rounded-xl bg-gradient-to-br from-[#3b82f6]/30 to-[#6366f1]/30 blur opacity-0 group-hover:opacity-100 transition-opacity" />
           </div>
           <div>
-            <div className="font-bold text-white text-sm tracking-tight">FirewallIQ</div>
+            <div className="font-bold text-white text-sm tracking-tight">BC<span className="text-[#3b82f6]">Vision</span></div>
             <div className="text-[9px] tracking-widest uppercase font-medium" style={{ color: isMssp ? '#a78bfa' : '#334155' }}>
               {isMssp ? 'MSSP Admin' : 'Security Platform'}
             </div>

@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
+  <defs>
+    <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3b82f6"/>
+      <stop offset="100%" stop-color="#6366f1"/>
+    </linearGradient>
+  </defs>
+  <!-- Shield -->
+  <path d="M16 2L28 6.8V17C28 23.8 22.5 29.2 16 31C9.5 29.2 4 23.8 4 17V6.8L16 2Z" fill="url(#g)"/>
+  <!-- Eye outline -->
+  <path d="M8 17Q16 9.5 24 17Q16 24.5 8 17Z" fill="none" stroke="white" stroke-width="2" stroke-linejoin="round"/>
+  <!-- Iris -->
+  <circle cx="16" cy="17" r="4.5" fill="white"/>
+  <!-- Pupil -->
+  <circle cx="16" cy="17" r="2.2" fill="#3b82f6"/>
+  <!-- Highlight -->
+  <circle cx="17.2" cy="15.8" r="0.8" fill="white" opacity="0.7"/>
+</svg>

@@ -8,7 +8,7 @@ import { z } from 'zod'
 const schema = z.object({
   name:        z.string().min(2).max(100),
   slug:        z.string().min(2).max(50).regex(/^[a-z0-9-]+$/, 'Solo letras minúsculas, números y guiones'),
-  plan:          z.enum(['basico', 'profesional', 'empresarial']),
+  plan:          z.enum(['cortesia', 'basico', 'profesional', 'empresarial']),
   max_devices:   z.number().int().min(1).max(10000),
   monthly_price: z.number().int().min(0).optional(),
   admin_email:   z.string().email(),

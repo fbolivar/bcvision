@@ -4,7 +4,7 @@ import { z } from 'zod'
 
 const schema = z.object({
   name:          z.string().min(2).max(100).optional(),
-  plan:          z.enum(['basico', 'profesional', 'empresarial']).optional(),
+  plan:          z.enum(['cortesia', 'basico', 'profesional', 'empresarial']).optional(),
   max_devices:   z.number().int().min(1).max(10000).optional(),
   monthly_price: z.number().int().min(0).optional(),
   tax_id_type:   z.enum(['NIT','CC','CE','RUT','PASAPORTE','OTRO']).optional(),

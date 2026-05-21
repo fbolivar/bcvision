@@ -24,15 +24,17 @@ function formatCOP(pesos: number): string {
 }
 
 const PLAN_STYLE: Record<string, string> = {
+  cortesia:    'text-[#22c55e] bg-[#22c55e]/10 border-[#22c55e]/20',
   basico:      'text-[#64748b] bg-[#64748b]/10 border-[#64748b]/20',
   profesional: 'text-[#3b82f6] bg-[#3b82f6]/10 border-[#3b82f6]/20',
   empresarial: 'text-[#a78bfa] bg-[#8b5cf6]/10 border-[#8b5cf6]/20',
 }
 
 const PLAN_OPTIONS = [
-  { value: 'basico',      label: 'Básico',       devices: 5,   price: 350000,   retention: '30 días',     features: 'Dashboard · Alertas · PDF' },
-  { value: 'profesional', label: 'Profesional',  devices: 20,  price: 900000,   retention: '90 días',     features: 'Compliance · Tendencias · Soporteprio.' },
-  { value: 'empresarial', label: 'Empresarial',  devices: 999, price: 2500000,  retention: '365 días',    features: 'White-label · API · SLA dedicado' },
+  { value: 'cortesia',    label: 'Cortesía',     devices: 5,   price: 0,        retention: '30 días',  features: 'Sin cobro · Dashboard · Alertas básicas' },
+  { value: 'basico',      label: 'Básico',       devices: 5,   price: 350000,   retention: '30 días',  features: 'Dashboard · Alertas · PDF' },
+  { value: 'profesional', label: 'Profesional',  devices: 20,  price: 900000,   retention: '90 días',  features: 'Compliance · Tendencias · Soporte prio.' },
+  { value: 'empresarial', label: 'Empresarial',  devices: 999, price: 2500000,  retention: '365 días', features: 'White-label · API · SLA dedicado' },
 ]
 
 function inputClass() {
@@ -107,7 +109,7 @@ function NewClientModal({ onClose, onCreated }: { onClose: () => void; onCreated
           </Field>
 
           <Field label="Plan">
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-4 gap-2">
               {PLAN_OPTIONS.map(opt => (
                 <button key={opt.value} onClick={() => handlePlanChange(opt.value)}
                   className={`p-2.5 rounded-xl border text-left transition-all ${
@@ -242,7 +244,7 @@ function EditClientModal({ org, onClose, onSaved }: { org: Org; onClose: () => v
           </Field>
 
           <Field label="Plan">
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-4 gap-2">
               {PLAN_OPTIONS.map(opt => (
                 <button key={opt.value} onClick={() => { setPlan(opt.value); setMaxDevices(opt.devices); setMonthlyPrice(opt.price) }}
                   className={`p-2.5 rounded-xl border text-left transition-all ${

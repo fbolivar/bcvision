@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
 
 export async function GET() {
   try {
@@ -11,13 +11,15 @@ export async function GET() {
       .from('users').select('org_id, role').eq('id', user.id).single()
     if (!profile?.org_id) return NextResponse.json({ error: 'Sin organización' }, { status: 403 })
 
+    const admin = createAdminClient()
+
     const [orgRes, subRes, invoicesRes] = await Promise.all([
-      supabase.from('organizations')
+      admin.from('organizations')
         .select('id, name, plan, monthly_price')
         .eq('id', profile.org_id).single(),
-      supabase.from('subscriptions')
+      admin.from('subscriptions')
         .select('*').eq('org_id', profile.org_id).single(),
-      supabase.from('invoices')
+      admin.from('invoices')
         .select('*').eq('org_id', profile.org_id)
         .order('created_at', { ascending: false }).limit(12),
     ])

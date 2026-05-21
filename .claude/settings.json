@@ -1,0 +1,13 @@
+﻿{
+  "permissions": {
+    "defaultMode": "bypassPermissions",
+    "allow": [
+      "Bash(npm run:*)",
+      "Bash(npm install:*)",
+      "Bash(cd:*)",
+      "Bash(for:*)",
+      "Bash(echo:*)",
+      "Bash(head:*)"
+    ]
+  }
+}

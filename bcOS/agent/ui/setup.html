@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>bcOS — Configuración inicial</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  :root{--blue:#3b82f6;--indigo:#6366f1;--green:#22c55e;--red:#ef4444;--bg:#060a12;--card:#0a1225;--border:#1e3a5f;--text:#e2e8f0;--muted:#64748b;--muted2:#334155}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+  .bg-grid{position:fixed;inset:0;background-image:linear-gradient(rgba(59,130,246,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(59,130,246,.04) 1px,transparent 1px);background-size:40px 40px;pointer-events:none}
+  .orb{position:fixed;border-radius:50%;filter:blur(80px);pointer-events:none}
+  .orb1{width:400px;height:400px;background:rgba(59,130,246,.07);top:-100px;left:-100px}
+  .orb2{width:300px;height:300px;background:rgba(99,102,241,.06);bottom:-80px;right:-80px}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:40px;width:100%;max-width:500px;position:relative;z-index:1}
+  .card::before{content:'';position:absolute;inset:0;border-radius:20px;border-top:1px solid rgba(59,130,246,.3);border-left:1px solid rgba(59,130,246,.15);pointer-events:none}
+  .logo{display:flex;align-items:center;gap:12px;margin-bottom:32px}
+  .logo-icon{width:44px;height:44px;background:linear-gradient(135deg,var(--blue),var(--indigo));border-radius:12px;display:flex;align-items:center;justify-content:center;box-shadow:0 0 20px rgba(59,130,246,.3)}
+  .logo-text{font-size:22px;font-weight:700;color:#fff}.logo-text span{color:var(--blue)}
+  .badge{display:inline-flex;align-items:center;gap:6px;background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.2);border-radius:20px;padding:4px 12px;font-size:11px;font-weight:600;color:var(--blue);text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px}
+  h1{font-size:24px;font-weight:700;color:#fff;margin-bottom:6px}
+  .subtitle{color:var(--muted);font-size:14px;margin-bottom:32px;line-height:1.5}
+  .steps{display:flex;gap:8px;margin-bottom:28px}
+  .step{flex:1;height:3px;border-radius:2px;background:var(--border);transition:background .3s}
+  .step.active{background:var(--blue)}
+  .step.done{background:var(--green)}
+  .field{margin-bottom:20px}
+  label{display:block;font-size:11px;font-weight:700;color:var(--muted2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px}
+  input{width:100%;background:#060a12;border:1px solid var(--border);border-radius:12px;padding:11px 16px;font-size:14px;color:#fff;outline:none;transition:border-color .2s}
+  input:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(59,130,246,.1)}
+  input::placeholder{color:var(--muted2)}
+  .hint{font-size:11px;color:var(--muted2);margin-top:6px}
+  .btn{width:100%;padding:12px;border-radius:12px;border:none;font-size:14px;font-weight:600;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:8px}
+  .btn-primary{background:var(--blue);color:#fff}
+  .btn-primary:hover{background:#2563eb}
+  .btn-primary:disabled{opacity:.5;cursor:not-allowed}
+  .btn-outline{background:transparent;color:var(--muted);border:1px solid var(--border);margin-top:10px}
+  .btn-outline:hover{border-color:var(--blue);color:var(--blue)}
+  .alert{padding:12px 16px;border-radius:12px;font-size:13px;margin-bottom:20px;display:flex;align-items:flex-start;gap:10px}
+  .alert-error{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.2);color:#fca5a5}
+  .alert-success{background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.2);color:#86efac}
+  .alert-info{background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.2);color:#93c5fd}
+  .spinner{width:16px;height:16px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite;flex-shrink:0}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .success-icon{width:64px;height:64px;background:rgba(34,197,94,.15);border:1px solid rgba(34,197,94,.3);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;box-shadow:0 0 30px rgba(34,197,94,.2)}
+  .success-icon svg{width:32px;height:32px;color:var(--green)}
+  .info-grid{display:grid;gap:8px;margin-bottom:24px}
+  .info-row{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:10px}
+  .info-row .label{font-size:12px;color:var(--muted)}
+  .info-row .value{font-size:12px;font-family:monospace;color:#fff}
+  [data-page]{display:none}
+  [data-page].active{display:block}
+</style>
+</head>
+<body>
+<div class="bg-grid"></div>
+<div class="orb orb1"></div>
+<div class="orb orb2"></div>
+
+<div class="card">
+  <div class="logo">
+    <div class="logo-icon">
+      <svg width="26" height="26" viewBox="0 0 32 32" fill="none">
+        <path d="M16 2L28 6.8V17C28 23.8 22.5 29.2 16 31C9.5 29.2 4 23.8 4 17V6.8L16 2Z" fill="white" fill-opacity=".18"/>
+        <path d="M8 17Q16 9.5 24 17Q16 24.5 8 17Z" fill="none" stroke="white" stroke-width="2" stroke-linejoin="round"/>
+        <circle cx="16" cy="17" r="4.5" fill="white"/>
+        <circle cx="16" cy="17" r="2.2" fill="#3b82f6"/>
+      </svg>
+    </div>
+    <div>
+      <div class="logo-text">bc<span>OS</span></div>
+      <div style="font-size:10px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase">Syslog Agent</div>
+    </div>
+  </div>
+
+  <div class="steps">
+    <div class="step active" id="s1"></div>
+    <div class="step" id="s2"></div>
+    <div class="step" id="s3"></div>
+  </div>
+
+  <!-- Page 1: BCVision endpoint -->
+  <div data-page="1" class="active">
+    <div class="badge">Paso 1 de 3</div>
+    <h1>Conectar a BCVision</h1>
+    <p class="subtitle">Ingresa la URL de tu instancia BCVision y la clave API del agente.</p>
+
+    <div id="p1-error" class="alert alert-error" style="display:none"></div>
+
+    <div class="field">
+      <label>URL de BCVision</label>
+      <input id="bcvision_url" type="url" placeholder="https://app.bcvision.io" autocomplete="off">
+      <div class="hint">Incluye https:// sin barra final</div>
+    </div>
+    <div class="field">
+      <label>Clave API del agente</label>
+      <input id="bcvision_api_key" type="password" placeholder="bcv_agent_••••••••••••••••">
+      <div class="hint">Generada en BCVision → Ajustes → API Keys</div>
+    </div>
+
+    <button class="btn btn-primary" id="btn-test">
+      <span>Verificar conexión →</span>
+    </button>
+  </div>
+
+  <!-- Page 2: Agent config -->
+  <div data-page="2">
+    <div class="badge">Paso 2 de 3</div>
+    <h1>Configurar agente</h1>
+    <p class="subtitle">Nombre del appliance y puertos Syslog que escuchará.</p>
+
+    <div class="field">
+      <label>Nombre del agente</label>
+      <input id="agent_name" type="text" placeholder="Ej: Sede Principal" value="bcOS-Agent">
+      <div class="hint">Aparecerá en el dashboard de BCVision</div>
+    </div>
+    <div class="field" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div>
+        <label>Puerto UDP</label>
+        <input id="udp_port" type="number" value="514">
+      </div>
+      <div>
+        <label>Puerto TCP</label>
+        <input id="tcp_port" type="number" value="514">
+      </div>
+    </div>
+
+    <button class="btn btn-primary" id="btn-save">
+      <span>Guardar y continuar →</span>
+    </button>
+    <button class="btn btn-outline" id="btn-back1">← Volver</button>
+  </div>
+
+  <!-- Page 3: Done -->
+  <div data-page="3">
+    <div class="success-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="20 6 9 17 4 12"/>
+      </svg>
+    </div>
+    <h1 style="text-align:center;margin-bottom:8px">¡Agente configurado!</h1>
+    <p class="subtitle" style="text-align:center">bcOS está listo para recibir eventos de tus firewalls.</p>
+
+    <div class="info-grid">
+      <div class="info-row">
+        <span class="label">Syslog UDP</span>
+        <span class="value" id="d-udp">:514</span>
+      </div>
+      <div class="info-row">
+        <span class="label">Syslog TCP</span>
+        <span class="value" id="d-tcp">:514</span>
+      </div>
+      <div class="info-row">
+        <span class="label">Web UI</span>
+        <span class="value" id="d-web">:80</span>
+      </div>
+    </div>
+
+    <div class="alert alert-info" style="margin-bottom:20px">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;margin-top:2px"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      <span>Apunta el <strong>syslog de tu firewall</strong> a la IP de este appliance en el puerto configurado.</span>
+    </div>
+
+    <button class="btn btn-primary" onclick="location.href='/dashboard'">
+      Ver dashboard →
+    </button>
+  </div>
+</div>
+
+<script>
+let page = 1;
+let savedUrl = '', savedKey = '';
+
+function showPage(n) {
+  document.querySelectorAll('[data-page]').forEach(el => el.classList.remove('active'));
+  document.querySelector(`[data-page="${n}"]`).classList.add('active');
+  [1,2,3].forEach(i => {
+    const s = document.getElementById(`s${i}`);
+    s.className = 'step' + (i < n ? ' done' : i === n ? ' active' : '');
+  });
+  page = n;
+}
+
+function showError(id, msg) {
+  const el = document.getElementById(id);
+  el.textContent = msg;
+  el.style.display = 'flex';
+}
+function clearError(id) {
+  const el = document.getElementById(id);
+  if (el) { el.textContent = ''; el.style.display = 'none'; }
+}
+
+// Page 1: test connection
+document.getElementById('btn-test').addEventListener('click', async () => {
+  clearError('p1-error');
+  const url = document.getElementById('bcvision_url').value.trim().replace(/\/$/, '');
+  const key = document.getElementById('bcvision_api_key').value.trim();
+  if (!url || !key) return showError('p1-error', 'Completa todos los campos.');
+
+  const btn = document.getElementById('btn-test');
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spinner"></div><span>Verificando...</span>';
+
+  try {
+    const res = await fetch('/api/config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ bcvision_url: url, bcvision_api_key: key }),
+    });
+    if (!res.ok) throw new Error('Error guardando config');
+
+    const test = await fetch('/api/test', { method: 'POST' });
+    if (!test.ok) {
+      const d = await test.json();
+      throw new Error(d.error ?? 'Sin respuesta de BCVision');
+    }
+
+    savedUrl = url; savedKey = key;
+    showPage(2);
+  } catch (err) {
+    showError('p1-error', err.message);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<span>Verificar conexión →</span>';
+  }
+});
+
+// Page 2: save agent config
+document.getElementById('btn-save').addEventListener('click', async () => {
+  const name = document.getElementById('agent_name').value.trim() || 'bcOS-Agent';
+  const udp  = parseInt(document.getElementById('udp_port').value, 10) || 514;
+  const tcp  = parseInt(document.getElementById('tcp_port').value, 10) || 514;
+
+  await fetch('/api/config', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ agent_name: name, syslog_udp_port: udp, syslog_tcp_port: tcp }),
+  });
+
+  document.getElementById('d-udp').textContent = `:${udp}`;
+  document.getElementById('d-tcp').textContent = `:${tcp}`;
+  document.getElementById('d-web').textContent = ':80';
+  showPage(3);
+});
+
+document.getElementById('btn-back1').addEventListener('click', () => showPage(1));
+</script>
+</body>
+</html>

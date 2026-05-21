@@ -39,7 +39,7 @@ export default async function SettingsPage() {
           profile={profile}
           org={org}
           members={members ?? []}
-          isAdmin={profile.role === 'admin'}
+          isAdmin={['admin', 'super_admin'].includes(profile.role)}
         />
       </main>
     </div>

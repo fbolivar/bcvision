@@ -1,12 +1,13 @@
 'use client'
 
 import { useState } from 'react'
-import { User, Building2, Users, Shield, CreditCard } from 'lucide-react'
+import { User, Building2, Users, Shield, CreditCard, Server } from 'lucide-react'
 import { ProfileTab } from './profile-tab'
 import { OrgTab } from './org-tab'
 import { MembersTab } from './members-tab'
 import { SecurityTab } from './security-tab'
 import { BillingTab } from './billing-tab'
+import { AgentsTab } from './agents-tab'
 
 interface Props {
   user: { id: string; email: string }
@@ -41,11 +42,12 @@ interface Props {
 }
 
 const ALL_TABS = [
-  { id: 'profile',  label: 'Mi Perfil',    icon: User,       roles: ['admin', 'analyst', 'viewer'] },
-  { id: 'org',      label: 'Organización', icon: Building2,  roles: ['admin', 'analyst'] },
-  { id: 'members',  label: 'Miembros',     icon: Users,      roles: ['admin'] },
-  { id: 'security', label: 'Seguridad',    icon: Shield,     roles: ['admin', 'analyst', 'viewer'] },
-  { id: 'billing',  label: 'Facturación',  icon: CreditCard, roles: ['admin'] },
+  { id: 'profile',  label: 'Mi Perfil',    icon: User,       roles: ['admin', 'super_admin', 'analyst', 'viewer'] },
+  { id: 'org',      label: 'Organización', icon: Building2,  roles: ['admin', 'super_admin', 'analyst'] },
+  { id: 'members',  label: 'Miembros',     icon: Users,      roles: ['admin', 'super_admin'] },
+  { id: 'agents',   label: 'Agentes bcOS', icon: Server,     roles: ['admin', 'super_admin'] },
+  { id: 'security', label: 'Seguridad',    icon: Shield,     roles: ['admin', 'super_admin', 'analyst', 'viewer'] },
+  { id: 'billing',  label: 'Facturación',  icon: CreditCard, roles: ['admin', 'super_admin'] },
 ]
 
 export function SettingsTabs({ user, profile, org, members, isAdmin }: Props) {
@@ -76,6 +78,7 @@ export function SettingsTabs({ user, profile, org, members, isAdmin }: Props) {
       {active === 'profile'  && <ProfileTab user={user} profile={profile} />}
       {active === 'org'      && <OrgTab org={org} isAdmin={isAdmin} />}
       {active === 'members'  && <MembersTab members={members} isAdmin={isAdmin} currentUserId={user.id} />}
+      {active === 'agents'   && <AgentsTab orgId={profile.org_id} />}
       {active === 'security' && <SecurityTab email={user.email} />}
       {active === 'billing'  && <BillingTab />}
     </div>

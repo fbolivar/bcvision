@@ -1,0 +1,80 @@
+name: Build bcOS ISO
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'bcOS/**'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version tag (e.g. 1.0.0)'
+        required: false
+        default: 'latest'
+
+jobs:
+  build:
+    name: Build bcOS ISO
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Set version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${{ inputs.version }}" ]; then
+            echo "VERSION=${{ inputs.version }}" >> $GITHUB_OUTPUT
+          else
+            echo "VERSION=$(date +'%Y%m%d')-$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Build bcOS ISO
+        run: |
+          mkdir -p output
+          docker build \
+            --tag bcos-builder:${{ steps.version.outputs.VERSION }} \
+            --file bcOS/Dockerfile \
+            bcOS/
+          docker run --rm \
+            --volume "$(pwd)/output:/output" \
+            bcos-builder:${{ steps.version.outputs.VERSION }}
+
+      - name: Rename ISO with version
+        run: |
+          mv output/bcOS-x86_64.iso output/bcOS-${{ steps.version.outputs.VERSION }}-x86_64.iso
+          ls -lh output/
+
+      - name: Upload ISO artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: bcos-iso-${{ steps.version.outputs.VERSION }}
+          path: output/bcOS-*.iso
+          retention-days: 30
+
+      - name: Create GitHub Release (on tag)
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "bcOS ${{ steps.version.outputs.VERSION }}"
+          body: |
+            ## bcOS Syslog Agent — Virtual Appliance
+
+            ### Instalación
+            1. Descarga `bcOS-${{ steps.version.outputs.VERSION }}-x86_64.iso`
+            2. Crea una VM (1 CPU, 512MB RAM) y bootea desde la ISO
+            3. Accede a `http://<IP-del-appliance>/` para configurar
+            4. Ingresa la URL de BCVision y tu clave API
+
+            ### Cambios
+            ${{ github.event.head_commit.message }}
+          files: output/bcOS-*.iso
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, Shield, Activity, AlertTriangle,
   Users, Monitor, FileText, Settings, LogOut, ChevronRight,
-  Wifi, AppWindow, ShieldAlert, TrendingUp, Building2, Sliders,
+  Wifi, AppWindow, ShieldAlert, TrendingUp, Building2, Sliders, Download,
 } from 'lucide-react'
 import { cn } from '@/shared/lib/utils'
 import { createClient } from '@/lib/supabase/client'
@@ -32,6 +32,7 @@ const msspItems = [
 ]
 
 const systemItems = [
+  { href: '/downloads',    label: 'Descargas bcOS',   icon: Download,   color: '#3b82f6', roles: ['admin'] },
   { href: '/settings',     label: 'Ajustes',          icon: Settings,   color: '#64748b', roles: ['admin','analyst','viewer'] },
   { href: '/org-settings', label: 'Config. avanzada', icon: Sliders,    color: '#34d399', roles: ['admin'] },
 ]

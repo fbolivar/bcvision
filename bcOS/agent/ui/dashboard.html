@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>bcOS — Dashboard</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  :root{--blue:#3b82f6;--indigo:#6366f1;--green:#22c55e;--yellow:#fbbf24;--red:#ef4444;--bg:#060a12;--card:#0a1225;--border:#1e3a5f;--text:#e2e8f0;--muted:#64748b;--muted2:#334155}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;min-height:100vh}
+  .bg-grid{position:fixed;inset:0;background-image:linear-gradient(rgba(59,130,246,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(59,130,246,.04) 1px,transparent 1px);background-size:40px 40px;pointer-events:none;z-index:0}
+  header{position:sticky;top:0;z-index:10;background:rgba(6,10,18,.85);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:0 24px;height:56px;display:flex;align-items:center;justify-content:space-between}
+  .logo{display:flex;align-items:center;gap:10px}
+  .logo-icon{width:34px;height:34px;background:linear-gradient(135deg,var(--blue),var(--indigo));border-radius:9px;display:flex;align-items:center;justify-content:center}
+  .logo-text{font-size:16px;font-weight:700;color:#fff}.logo-text span{color:var(--blue)}
+  .header-right{display:flex;align-items:center;gap:12px}
+  .status-pill{display:flex;align-items:center;gap:6px;padding:5px 12px;border-radius:20px;font-size:12px;font-weight:600}
+  .status-pill.ok{background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.25);color:var(--green)}
+  .status-pill.err{background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.25);color:var(--red)}
+  .dot{width:7px;height:7px;border-radius:50%;animation:pulse 2s ease-in-out infinite}
+  .dot-green{background:var(--green)}
+  .dot-red{background:var(--red)}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+  .btn-sm{padding:6px 14px;border-radius:9px;border:1px solid var(--border);background:transparent;color:var(--muted);font-size:12px;cursor:pointer;transition:all .2s}
+  .btn-sm:hover{border-color:var(--blue);color:var(--blue)}
+  main{max-width:900px;margin:0 auto;padding:28px 24px;position:relative;z-index:1}
+  h2{font-size:20px;font-weight:700;color:#fff;margin-bottom:6px}
+  .page-sub{font-size:13px;color:var(--muted);margin-bottom:24px}
+  .grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px}
+  @media(max-width:640px){.grid4{grid-template-columns:repeat(2,1fr)}}
+  .stat-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:18px 20px}
+  .stat-label{font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px}
+  .stat-value{font-size:28px;font-weight:700;color:#fff;font-variant-numeric:tabular-nums}
+  .stat-sub{font-size:11px;color:var(--muted2);margin-top:4px}
+  .section-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:20px 24px;margin-bottom:16px}
+  .section-title{font-size:13px;font-weight:700;color:#fff;margin-bottom:16px;display:flex;align-items:center;gap:8px}
+  .info-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid rgba(30,58,95,.5)}
+  .info-row:last-child{border-bottom:none}
+  .info-label{font-size:12px;color:var(--muted)}
+  .info-value{font-size:12px;font-family:monospace;color:#fff}
+  .info-value.ok{color:var(--green)}
+  .info-value.err{color:var(--red)}
+  .alert-banner{padding:12px 16px;border-radius:12px;font-size:13px;display:flex;align-items:flex-start;gap:10px;margin-bottom:16px}
+  .alert-banner.warn{background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.2);color:#fde68a}
+  .alert-banner.err{background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);color:#fca5a5}
+  .form-row{display:flex;gap:10px;align-items:flex-end}
+  .field{flex:1}
+  label{display:block;font-size:11px;font-weight:700;color:var(--muted2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:7px}
+  input{width:100%;background:#060a12;border:1px solid var(--border);border-radius:10px;padding:9px 14px;font-size:13px;color:#fff;outline:none;transition:border-color .2s}
+  input:focus{border-color:var(--blue)}
+  input::placeholder{color:var(--muted2)}
+  .btn-save{padding:9px 18px;border-radius:10px;background:var(--blue);color:#fff;border:none;font-size:13px;font-weight:600;cursor:pointer;transition:background .2s;white-space:nowrap}
+  .btn-save:hover{background:#2563eb}
+  .spinner{width:14px;height:14px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite;display:inline-block}
+  @keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div class="bg-grid"></div>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">
+      <svg width="20" height="20" viewBox="0 0 32 32" fill="none">
+        <path d="M16 2L28 6.8V17C28 23.8 22.5 29.2 16 31C9.5 29.2 4 23.8 4 17V6.8L16 2Z" fill="white" fill-opacity=".18"/>
+        <path d="M8 17Q16 9.5 24 17Q16 24.5 8 17Z" fill="none" stroke="white" stroke-width="2" stroke-linejoin="round"/>
+        <circle cx="16" cy="17" r="4.5" fill="white"/>
+        <circle cx="16" cy="17" r="2.2" fill="#3b82f6"/>
+      </svg>
+    </div>
+    <div class="logo-text">bc<span>OS</span> <span style="font-size:12px;color:var(--muted);font-weight:400;margin-left:4px" id="agent-name-header">Agente</span></div>
+  </div>
+  <div class="header-right">
+    <div class="status-pill" id="conn-pill">
+      <div class="dot dot-green" id="conn-dot"></div>
+      <span id="conn-text">Conectado</span>
+    </div>
+    <button class="btn-sm" onclick="location.href='/setup'">⚙ Configurar</button>
+  </div>
+</header>
+
+<main>
+  <h2>Estado del agente</h2>
+  <p class="page-sub" id="sub-text">Cargando...</p>
+
+  <div id="error-banner" class="alert-banner err" style="display:none"></div>
+
+  <div class="grid4">
+    <div class="stat-card">
+      <div class="stat-label">Recibidos</div>
+      <div class="stat-value" id="s-recv">—</div>
+      <div class="stat-sub">mensajes</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Enviados</div>
+      <div class="stat-value" id="s-fwd">—</div>
+      <div class="stat-sub">a BCVision</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Fallidos</div>
+      <div class="stat-value" id="s-fail">—</div>
+      <div class="stat-sub">reintentos</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Último evento</div>
+      <div class="stat-value" style="font-size:14px;padding-top:6px" id="s-last">—</div>
+      <div class="stat-sub" id="s-last-sub"></div>
+    </div>
+  </div>
+
+  <div class="section-card">
+    <div class="section-title">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      Detalles de conexión
+    </div>
+    <div class="info-row">
+      <span class="info-label">BCVision URL</span>
+      <span class="info-value" id="d-url">—</span>
+    </div>
+    <div class="info-row">
+      <span class="info-label">Estado</span>
+      <span class="info-value" id="d-status">—</span>
+    </div>
+    <div class="info-row">
+      <span class="info-label">Último error</span>
+      <span class="info-value err" id="d-lasterr">—</span>
+    </div>
+    <div class="info-row">
+      <span class="info-label">Activo desde</span>
+      <span class="info-value" id="d-uptime">—</span>
+    </div>
+  </div>
+
+  <div class="section-card">
+    <div class="section-title">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      Cambiar API Key
+    </div>
+    <div class="form-row">
+      <div class="field">
+        <label>Nueva clave API</label>
+        <input type="password" id="new-key" placeholder="bcv_agent_••••••••••••••••">
+      </div>
+      <button class="btn-save" id="btn-update-key">Actualizar</button>
+    </div>
+  </div>
+</main>
+
+<script>
+let refreshTimer;
+
+function timeSince(iso) {
+  if (!iso) return 'Nunca';
+  const sec = Math.floor((Date.now() - new Date(iso)) / 1000);
+  if (sec < 60) return `hace ${sec}s`;
+  if (sec < 3600) return `hace ${Math.floor(sec/60)}m`;
+  return `hace ${Math.floor(sec/3600)}h`;
+}
+
+function fmt(n) {
+  return n >= 1000 ? (n/1000).toFixed(1)+'K' : String(n);
+}
+
+async function loadStatus() {
+  try {
+    const res = await fetch('/api/status');
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const d = await res.json();
+
+    document.getElementById('agent-name-header').textContent = d.agent_name || '';
+    document.getElementById('sub-text').textContent = `Activo · ${d.bcvision_url || 'sin configurar'}`;
+
+    const st = d.stats;
+    document.getElementById('s-recv').textContent  = fmt(st.messages_received);
+    document.getElementById('s-fwd').textContent   = fmt(st.messages_forwarded);
+    document.getElementById('s-fail').textContent  = fmt(st.messages_failed);
+
+    if (st.last_message) {
+      document.getElementById('s-last').textContent     = timeSince(st.last_message);
+      document.getElementById('s-last-sub').textContent = new Date(st.last_message).toLocaleTimeString('es-CO');
+    } else {
+      document.getElementById('s-last').textContent = 'Ninguno';
+    }
+
+    const pill = document.getElementById('conn-pill');
+    const dot  = document.getElementById('conn-dot');
+    const ct   = document.getElementById('conn-text');
+
+    if (st.connected) {
+      pill.className = 'status-pill ok';
+      dot.className  = 'dot dot-green';
+      ct.textContent = 'Conectado';
+    } else {
+      pill.className = 'status-pill err';
+      dot.className  = 'dot dot-red';
+      ct.textContent = 'Desconectado';
+    }
+
+    document.getElementById('d-url').textContent    = d.bcvision_url || '—';
+    document.getElementById('d-status').textContent = st.connected ? '✓ Online' : '✗ Offline';
+    document.getElementById('d-status').className   = 'info-value ' + (st.connected ? 'ok' : 'err');
+    document.getElementById('d-lasterr').textContent = st.last_error || 'Ninguno';
+    document.getElementById('d-uptime').textContent  = st.started_at ? timeSince(st.started_at) : '—';
+
+    const eb = document.getElementById('error-banner');
+    if (!d.configured) {
+      eb.textContent = '⚠ Agente sin configurar. Haz clic en "Configurar" para conectarlo a BCVision.';
+      eb.style.display = 'flex';
+      eb.className = 'alert-banner warn';
+    } else if (st.last_error) {
+      eb.textContent = `Error: ${st.last_error}`;
+      eb.style.display = 'flex';
+      eb.className = 'alert-banner err';
+    } else {
+      eb.style.display = 'none';
+    }
+  } catch (err) {
+    document.getElementById('sub-text').textContent = 'Error al cargar estado';
+  }
+}
+
+document.getElementById('btn-update-key').addEventListener('click', async () => {
+  const key = document.getElementById('new-key').value.trim();
+  if (!key) return;
+  const btn = document.getElementById('btn-update-key');
+  btn.textContent = ''; btn.innerHTML = '<span class="spinner"></span>';
+  try {
+    await fetch('/api/config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ bcvision_api_key: key }),
+    });
+    document.getElementById('new-key').value = '';
+    btn.textContent = '✓ Guardado';
+    setTimeout(() => { btn.textContent = 'Actualizar'; }, 2000);
+    loadStatus();
+  } catch {
+    btn.textContent = 'Error';
+    setTimeout(() => { btn.textContent = 'Actualizar'; }, 2000);
+  }
+});
+
+loadStatus();
+refreshTimer = setInterval(loadStatus, 5000);
+</script>
+</body>
+</html>

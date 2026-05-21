@@ -1,6 +1,6 @@
 export const dynamic = 'force-dynamic'
 
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { Topbar } from '@/shared/components/topbar'
 import { MsspDashboard } from '@/features/mssp/components/mssp-dashboard'
@@ -14,8 +14,10 @@ export default async function AdminPage() {
   const { data: profile } = await supabase.from('users').select('role, org_id').eq('id', user.id).single()
   if (profile?.role !== 'super_admin') redirect('/dashboard')
 
-  // Obtener todas las organizaciones con métricas básicas
-  const { data: orgs } = await supabase
+  // Usar adminClient para bypasar RLS y ver TODAS las organizaciones
+  const adminClient = createAdminClient()
+
+  const { data: orgs } = await adminClient
     .from('organizations')
     .select('id, name, slug, plan, max_devices, monthly_price, tax_id_type, tax_id, created_at')
     .order('created_at', { ascending: false })
@@ -24,24 +26,24 @@ export default async function AdminPage() {
 
   // Métricas de las últimas 24h por org
   const since24h = new Date(Date.now() - 24 * 3600000).toISOString()
-  const { data: events24h } = await supabase
+  const { data: events24h } = await adminClient
     .from('firewall_events')
     .select('org_id, action, severity')
     .in('org_id', orgIds)
     .gte('event_time', since24h)
 
-  const { data: openAlerts } = await supabase
+  const { data: openAlerts } = await adminClient
     .from('alerts')
     .select('org_id, severity')
     .in('org_id', orgIds)
     .eq('status', 'open')
 
-  const { data: memberCounts } = await supabase
+  const { data: memberCounts } = await adminClient
     .from('users')
     .select('org_id')
     .in('org_id', orgIds)
 
-  const { data: subscriptions } = await supabase
+  const { data: subscriptions } = await adminClient
     .from('subscriptions')
     .select('org_id, status, current_period_end')
     .in('org_id', orgIds)

@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense } from 'react'
 import { useRouter } from 'next/navigation'
 import { Lock, ShieldCheck, Loader2, CheckCircle, Eye, EyeOff, AlertCircle } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import Link from 'next/link'
 
 function ResetPasswordForm() {
   const router   = useRouter()
@@ -19,21 +20,38 @@ function ResetPasswordForm() {
   const [sessionOk, setSessionOk] = useState(false)
 
   useEffect(() => {
-    // El código fue intercambiado en /auth/callback — solo verificamos que haya sesión activa
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSessionOk(!!session)
-      setChecking(false)
-    })
+    let resolved = false
 
-    // También escuchar si llega el evento por flujo implícito (fallback)
+    const resolve = (ok: boolean) => {
+      if (resolved) return
+      resolved = true
+      setSessionOk(ok)
+      setChecking(false)
+    }
+
+    // onAuthStateChange replica el estado actual a nuevos suscriptores —
+    // si el hash ya fue procesado, PASSWORD_RECOVERY / SIGNED_IN dispara igual
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'PASSWORD_RECOVERY' || (event === 'SIGNED_IN' && session)) {
-        setSessionOk(true)
-        setChecking(false)
+      if (event === 'PASSWORD_RECOVERY') {
+        resolve(true)
+      } else if (event === 'SIGNED_IN' && session) {
+        // Flujo hash: Supabase firma al usuario y luego emite PASSWORD_RECOVERY
+        // Aquí esperamos un tick más para ver si llega PASSWORD_RECOVERY
+        setTimeout(() => resolve(true), 200)
+      } else if (event === 'SIGNED_OUT') {
+        resolve(false)
       }
     })
-    return () => subscription.unsubscribe()
-  }, [supabase])
+
+    // Timeout de seguridad: si en 10s no llegó ningún evento, mostrar error
+    const timeout = setTimeout(() => resolve(false), 10_000)
+
+    return () => {
+      subscription.unsubscribe()
+      clearTimeout(timeout)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -67,74 +85,76 @@ function ResetPasswordForm() {
         </div>
         <h2 className="text-xl font-bold text-white mb-2">Enlace inválido o expirado</h2>
         <p className="text-[#64748b] text-sm mb-6">Solicita un nuevo enlace de recuperación.</p>
-        <a href="/forgot-password" className="inline-flex items-center gap-2 text-sm text-[#3b82f6] hover:text-[#60a5fa] transition-colors">
+        <Link href="/forgot-password" className="inline-flex items-center gap-2 text-sm text-[#3b82f6] hover:text-[#60a5fa] transition-colors">
           ← Solicitar nuevo enlace
-        </a>
+        </Link>
+      </div>
+    )
+  }
+
+  if (done) {
+    return (
+      <div className="text-center py-4">
+        <div className="w-14 h-14 rounded-full bg-[#22c55e]/15 border border-[#22c55e]/30 flex items-center justify-center mx-auto mb-5">
+          <CheckCircle className="w-7 h-7 text-[#22c55e]" />
+        </div>
+        <h2 className="text-xl font-bold text-white mb-2">¡Contraseña actualizada!</h2>
+        <p className="text-[#64748b] text-sm">Redirigiendo al dashboard...</p>
       </div>
     )
   }
 
   return (
     <div className="relative">
-      {done ? (
-        <div className="text-center py-4">
-          <div className="w-14 h-14 rounded-full bg-[#22c55e]/15 border border-[#22c55e]/30 flex items-center justify-center mx-auto mb-5">
-            <CheckCircle className="w-7 h-7 text-[#22c55e]" />
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-white">Nueva contraseña</h1>
+        <p className="text-[#64748b] text-sm mt-1">Elige una contraseña segura</p>
+      </div>
+
+      <form onSubmit={handleSubmit} className="space-y-5">
+        {error && (
+          <div className="bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3 text-red-400 text-sm">
+            {error}
           </div>
-          <h2 className="text-xl font-bold text-white mb-2">¡Contraseña actualizada!</h2>
-          <p className="text-[#64748b] text-sm">Redirigiendo al dashboard...</p>
-        </div>
-      ) : (
-        <>
-          <div className="mb-6">
-            <h1 className="text-2xl font-bold text-white">Nueva contraseña</h1>
-            <p className="text-[#64748b] text-sm mt-1">Elige una contraseña segura</p>
-          </div>
+        )}
 
-          <form onSubmit={handleSubmit} className="space-y-5">
-            {error && (
-              <div className="bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3 text-red-400 text-sm">
-                {error}
-              </div>
-            )}
-
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-[#94a3b8] uppercase tracking-wider">Nueva contraseña</label>
-              <div className="relative">
-                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#334155]" />
-                <input
-                  type={showPw ? 'text' : 'password'} value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  placeholder="Mínimo 8 caracteres" required minLength={8}
-                  className="input-cyber w-full rounded-xl px-4 py-3 pl-10 pr-11 text-sm"
-                />
-                <button type="button" onClick={() => setShowPw(v => !v)}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#334155] hover:text-[#64748b]">
-                  {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-[#94a3b8] uppercase tracking-wider">Confirmar contraseña</label>
-              <div className="relative">
-                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#334155]" />
-                <input
-                  type={showPw ? 'text' : 'password'} value={confirm}
-                  onChange={e => setConfirm(e.target.value)}
-                  placeholder="Repite la contraseña" required
-                  className="input-cyber w-full rounded-xl px-4 py-3 pl-10 text-sm"
-                />
-              </div>
-            </div>
-
-            <button type="submit" disabled={loading}
-              className="btn-primary w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm">
-              {loading ? <><Loader2 className="w-4 h-4 animate-spin" />Actualizando...</> : 'Guardar nueva contraseña'}
+        <div className="space-y-1.5">
+          <label className="text-xs font-semibold text-[#94a3b8] uppercase tracking-wider">Nueva contraseña</label>
+          <div className="relative">
+            <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#334155]" />
+            <input
+              type={showPw ? 'text' : 'password'} value={password}
+              onChange={e => setPassword(e.target.value)}
+              placeholder="Mínimo 8 caracteres" required minLength={8}
+              className="input-cyber w-full rounded-xl px-4 py-3 pl-10 pr-11 text-sm"
+            />
+            <button type="button" onClick={() => setShowPw(v => !v)}
+              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#334155] hover:text-[#64748b]">
+              {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
             </button>
-          </form>
-        </>
-      )}
+          </div>
+        </div>
+
+        <div className="space-y-1.5">
+          <label className="text-xs font-semibold text-[#94a3b8] uppercase tracking-wider">Confirmar contraseña</label>
+          <div className="relative">
+            <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#334155]" />
+            <input
+              type={showPw ? 'text' : 'password'} value={confirm}
+              onChange={e => setConfirm(e.target.value)}
+              placeholder="Repite la contraseña" required
+              className="input-cyber w-full rounded-xl px-4 py-3 pl-10 text-sm"
+            />
+          </div>
+        </div>
+
+        <button type="submit" disabled={loading}
+          className="btn-primary w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm">
+          {loading
+            ? <><Loader2 className="w-4 h-4 animate-spin" />Actualizando...</>
+            : 'Guardar nueva contraseña'}
+        </button>
+      </form>
     </div>
   )
 }

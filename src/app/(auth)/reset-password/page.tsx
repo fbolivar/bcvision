@@ -1,27 +1,36 @@
 'use client'
 
 import { useState, useEffect, Suspense } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
-import { Lock, ShieldCheck, Loader2, CheckCircle, Eye, EyeOff } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { Lock, ShieldCheck, Loader2, CheckCircle, Eye, EyeOff, AlertCircle } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
 function ResetPasswordForm() {
-  const router       = useRouter()
-  const searchParams = useSearchParams()
-  const supabase     = createClient()
+  const router   = useRouter()
+  const supabase = createClient()
 
   const [password,  setPassword]  = useState('')
   const [confirm,   setConfirm]   = useState('')
   const [showPw,    setShowPw]    = useState(false)
   const [loading,   setLoading]   = useState(false)
+  const [checking,  setChecking]  = useState(true)
   const [done,      setDone]      = useState(false)
   const [error,     setError]     = useState('')
   const [sessionOk, setSessionOk] = useState(false)
 
   useEffect(() => {
-    // Supabase pone el token en el hash — lo intercambia automáticamente al cargar
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'PASSWORD_RECOVERY') setSessionOk(true)
+    // El código fue intercambiado en /auth/callback — solo verificamos que haya sesión activa
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSessionOk(!!session)
+      setChecking(false)
+    })
+
+    // También escuchar si llega el evento por flujo implícito (fallback)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY' || (event === 'SIGNED_IN' && session)) {
+        setSessionOk(true)
+        setChecking(false)
+      }
     })
     return () => subscription.unsubscribe()
   }, [supabase])
@@ -41,11 +50,26 @@ function ResetPasswordForm() {
     setTimeout(() => router.push('/dashboard'), 2500)
   }
 
-  if (!sessionOk) {
+  if (checking) {
     return (
       <div className="text-center py-8">
         <Loader2 className="w-8 h-8 text-[#3b82f6] animate-spin mx-auto mb-4" />
         <p className="text-[#64748b] text-sm">Verificando enlace...</p>
+      </div>
+    )
+  }
+
+  if (!sessionOk) {
+    return (
+      <div className="text-center py-8">
+        <div className="w-14 h-14 rounded-full bg-red-500/15 border border-red-500/30 flex items-center justify-center mx-auto mb-5">
+          <AlertCircle className="w-7 h-7 text-red-400" />
+        </div>
+        <h2 className="text-xl font-bold text-white mb-2">Enlace inválido o expirado</h2>
+        <p className="text-[#64748b] text-sm mb-6">Solicita un nuevo enlace de recuperación.</p>
+        <a href="/forgot-password" className="inline-flex items-center gap-2 text-sm text-[#3b82f6] hover:text-[#60a5fa] transition-colors">
+          ← Solicitar nuevo enlace
+        </a>
       </div>
     )
   }

@@ -24,15 +24,15 @@ function formatCOP(pesos: number): string {
 }
 
 const PLAN_STYLE: Record<string, string> = {
-  free:         'text-[#64748b] bg-[#64748b]/10 border-[#64748b]/20',
-  professional: 'text-[#3b82f6] bg-[#3b82f6]/10 border-[#3b82f6]/20',
-  enterprise:   'text-[#a78bfa] bg-[#8b5cf6]/10 border-[#8b5cf6]/20',
+  basico:      'text-[#64748b] bg-[#64748b]/10 border-[#64748b]/20',
+  profesional: 'text-[#3b82f6] bg-[#3b82f6]/10 border-[#3b82f6]/20',
+  empresarial: 'text-[#a78bfa] bg-[#8b5cf6]/10 border-[#8b5cf6]/20',
 }
 
 const PLAN_OPTIONS = [
-  { value: 'free',         label: 'Free',         devices: 5   },
-  { value: 'professional', label: 'Professional',  devices: 50  },
-  { value: 'enterprise',   label: 'Enterprise',    devices: 500 },
+  { value: 'basico',      label: 'Básico',       devices: 5,   price: 350000,   retention: '30 días',     features: 'Dashboard · Alertas · PDF' },
+  { value: 'profesional', label: 'Profesional',  devices: 20,  price: 900000,   retention: '90 días',     features: 'Compliance · Tendencias · Soporteprio.' },
+  { value: 'empresarial', label: 'Empresarial',  devices: 999, price: 2500000,  retention: '365 días',    features: 'White-label · API · SLA dedicado' },
 ]
 
 function inputClass() {
@@ -43,16 +43,17 @@ function inputClass() {
 const TAX_ID_TYPES = ['NIT', 'CC', 'CE', 'RUT', 'PASAPORTE', 'OTRO']
 
 function NewClientModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
-  const [name,       setName]       = useState('')
-  const [slug,       setSlug]       = useState('')
-  const [plan,       setPlan]       = useState('professional')
-  const [maxDevices, setMaxDevices] = useState(50)
-  const [adminEmail, setAdminEmail] = useState('')
-  const [taxIdType,  setTaxIdType]  = useState('NIT')
-  const [taxId,      setTaxId]      = useState('')
-  const [loading,    setLoading]    = useState(false)
-  const [error,      setError]      = useState('')
-  const [done,       setDone]       = useState(false)
+  const [name,         setName]         = useState('')
+  const [slug,         setSlug]         = useState('')
+  const [plan,         setPlan]         = useState('profesional')
+  const [maxDevices,   setMaxDevices]   = useState(20)
+  const [monthlyPrice, setMonthlyPrice] = useState(900000)
+  const [adminEmail,   setAdminEmail]   = useState('')
+  const [taxIdType,    setTaxIdType]    = useState('NIT')
+  const [taxId,        setTaxId]        = useState('')
+  const [loading,      setLoading]      = useState(false)
+  const [error,        setError]        = useState('')
+  const [done,         setDone]         = useState(false)
 
   function handleNameChange(val: string) {
     setName(val)
@@ -62,7 +63,7 @@ function NewClientModal({ onClose, onCreated }: { onClose: () => void; onCreated
   function handlePlanChange(val: string) {
     setPlan(val)
     const opt = PLAN_OPTIONS.find(p => p.value === val)
-    if (opt) setMaxDevices(opt.devices)
+    if (opt) { setMaxDevices(opt.devices); setMonthlyPrice(opt.price) }
   }
 
   async function handleCreate() {
@@ -75,7 +76,7 @@ function NewClientModal({ onClose, onCreated }: { onClose: () => void; onCreated
     const res = await fetch('/api/admin/clients', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: name.trim(), slug, plan, max_devices: maxDevices, admin_email: adminEmail.trim(), tax_id_type: taxIdType, tax_id: taxId.trim() || undefined }),
+      body: JSON.stringify({ name: name.trim(), slug, plan, max_devices: maxDevices, monthly_price: monthlyPrice, admin_email: adminEmail.trim(), tax_id_type: taxIdType, tax_id: taxId.trim() || undefined }),
     })
     const data = await res.json()
     setLoading(false)
@@ -109,14 +110,25 @@ function NewClientModal({ onClose, onCreated }: { onClose: () => void; onCreated
             <div className="grid grid-cols-3 gap-2">
               {PLAN_OPTIONS.map(opt => (
                 <button key={opt.value} onClick={() => handlePlanChange(opt.value)}
-                  className={`p-3 rounded-xl border text-xs font-semibold transition-all ${
+                  className={`p-2.5 rounded-xl border text-left transition-all ${
                     plan === opt.value
-                      ? 'border-[#3b82f6] bg-[#3b82f6]/10 text-[#60a5fa]'
-                      : 'border-[#0f2038] bg-[#060a12] text-[#475569] hover:border-[#1e3a5f]'
+                      ? 'border-[#3b82f6] bg-[#3b82f6]/10'
+                      : 'border-[#0f2038] bg-[#060a12] hover:border-[#1e3a5f]'
                   }`}>
-                  {opt.label}
+                  <p className={`text-xs font-bold mb-0.5 ${plan === opt.value ? 'text-[#60a5fa]' : 'text-[#475569]'}`}>{opt.label}</p>
+                  <p className={`text-[10px] font-semibold ${plan === opt.value ? 'text-white' : 'text-[#334155]'}`}>{formatCOP(opt.price)}/mes</p>
+                  <p className={`text-[9px] mt-0.5 ${plan === opt.value ? 'text-[#475569]' : 'text-[#1e3a5f]'}`}>{opt.devices === 999 ? 'Ilimitados' : `${opt.devices} dispositivos`} · {opt.retention}</p>
                 </button>
               ))}
+            </div>
+            <p className="text-[10px] text-[#334155] mt-1">{PLAN_OPTIONS.find(o => o.value === plan)?.features}</p>
+          </Field>
+
+          <Field label="Precio mensual (COP)" hint="Puedes ajustar si aplica descuento">
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-[#475569]">$</span>
+              <input type="number" value={monthlyPrice} onChange={e => setMonthlyPrice(parseInt(e.target.value) || 0)}
+                min={0} className={`${inputClass()} pl-6`} />
             </div>
           </Field>
 
@@ -232,16 +244,19 @@ function EditClientModal({ org, onClose, onSaved }: { org: Org; onClose: () => v
           <Field label="Plan">
             <div className="grid grid-cols-3 gap-2">
               {PLAN_OPTIONS.map(opt => (
-                <button key={opt.value} onClick={() => setPlan(opt.value)}
-                  className={`p-3 rounded-xl border text-xs font-semibold transition-all ${
+                <button key={opt.value} onClick={() => { setPlan(opt.value); setMaxDevices(opt.devices); setMonthlyPrice(opt.price) }}
+                  className={`p-2.5 rounded-xl border text-left transition-all ${
                     plan === opt.value
-                      ? 'border-[#3b82f6] bg-[#3b82f6]/10 text-[#60a5fa]'
-                      : 'border-[#0f2038] bg-[#060a12] text-[#475569] hover:border-[#1e3a5f]'
+                      ? 'border-[#3b82f6] bg-[#3b82f6]/10'
+                      : 'border-[#0f2038] bg-[#060a12] hover:border-[#1e3a5f]'
                   }`}>
-                  {opt.label}
+                  <p className={`text-xs font-bold mb-0.5 ${plan === opt.value ? 'text-[#60a5fa]' : 'text-[#475569]'}`}>{opt.label}</p>
+                  <p className={`text-[10px] font-semibold ${plan === opt.value ? 'text-white' : 'text-[#334155]'}`}>{formatCOP(opt.price)}/mes</p>
+                  <p className={`text-[9px] mt-0.5 ${plan === opt.value ? 'text-[#475569]' : 'text-[#1e3a5f]'}`}>{opt.devices === 999 ? 'Ilimitados' : `${opt.devices} dispositivos`} · {opt.retention}</p>
                 </button>
               ))}
             </div>
+            <p className="text-[10px] text-[#334155] mt-1">{PLAN_OPTIONS.find(o => o.value === plan)?.features}</p>
           </Field>
 
           <Field label="Máximo de dispositivos">

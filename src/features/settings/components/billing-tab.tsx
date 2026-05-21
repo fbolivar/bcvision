@@ -38,9 +38,9 @@ const STATUS_STYLE: Record<string, { label: string; color: string; icon: React.E
 }
 
 const PLAN_COLOR: Record<string, string> = {
-  free:         '#64748b',
-  professional: '#3b82f6',
-  enterprise:   '#a78bfa',
+  basico:      '#64748b',
+  profesional: '#3b82f6',
+  empresarial: '#a78bfa',
 }
 
 function formatCOP(cents: number): string {
@@ -143,7 +143,7 @@ export function BillingTab() {
 
   const { org, subscription, invoices } = data ?? { org: null, subscription: null, invoices: [] }
   const isActive  = subscription?.status === 'active'
-  const planColor = PLAN_COLOR[org?.plan ?? 'free'] ?? '#64748b'
+  const planColor = PLAN_COLOR[org?.plan ?? 'basico'] ?? '#64748b'
   const hasPricing = (org?.monthly_price ?? 0) > 0
 
   return (

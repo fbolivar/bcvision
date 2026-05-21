@@ -8,11 +8,12 @@ import { z } from 'zod'
 const schema = z.object({
   name:        z.string().min(2).max(100),
   slug:        z.string().min(2).max(50).regex(/^[a-z0-9-]+$/, 'Solo letras minúsculas, números y guiones'),
-  plan:        z.enum(['free', 'professional', 'enterprise']),
-  max_devices: z.number().int().min(1).max(10000),
-  admin_email: z.string().email(),
-  tax_id_type: z.enum(['NIT','CC','CE','RUT','PASAPORTE','OTRO']).optional(),
-  tax_id:      z.string().max(30).optional(),
+  plan:          z.enum(['basico', 'profesional', 'empresarial']),
+  max_devices:   z.number().int().min(1).max(10000),
+  monthly_price: z.number().int().min(0).optional(),
+  admin_email:   z.string().email(),
+  tax_id_type:   z.enum(['NIT','CC','CE','RUT','PASAPORTE','OTRO']).optional(),
+  tax_id:        z.string().max(30).optional(),
 })
 
 export async function POST(request: Request) {
@@ -28,7 +29,7 @@ export async function POST(request: Request) {
     const parsed = schema.safeParse(body)
     if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 })
 
-    const { name, slug, plan, max_devices, admin_email, tax_id_type, tax_id } = parsed.data
+    const { name, slug, plan, max_devices, monthly_price, admin_email, tax_id_type, tax_id } = parsed.data
 
     // Verificar que el slug no exista
     const { data: existing } = await supabase.from('organizations').select('id').eq('slug', slug).single()
@@ -39,7 +40,7 @@ export async function POST(request: Request) {
     // Usar adminClient para todas las operaciones de DB (bypasa RLS)
     const { data: org, error: orgErr } = await adminClient
       .from('organizations')
-      .insert({ name, slug, plan, max_devices, retention_days: 90, tax_id_type: tax_id_type ?? null, tax_id: tax_id ?? null })
+      .insert({ name, slug, plan, max_devices, monthly_price: monthly_price ?? 0, retention_days: 90, tax_id_type: tax_id_type ?? null, tax_id: tax_id ?? null })
       .select()
       .single()
 

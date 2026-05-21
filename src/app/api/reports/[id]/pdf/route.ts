@@ -23,7 +23,7 @@ export async function GET(
     // Cargar branding de la org
     const { data: orgSettings } = await supabase
       .from('org_settings')
-      .select('brand_name, brand_color')
+      .select('brand_name, brand_color, logo_url')
       .eq('org_id', profile.org_id)
       .single()
 
@@ -48,6 +48,7 @@ export async function GET(
       reportType: report.type as string,
       brandName:  orgSettings?.brand_name,
       brandColor: orgSettings?.brand_color,
+      logoUrl:    orgSettings?.logo_url,
     })
 
     const buffer = await renderToBuffer(element as React.ReactElement<{ title?: string }>)

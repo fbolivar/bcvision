@@ -1,4 +1,4 @@
-﻿import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer'
+﻿import { Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/renderer'
 import type { ReportMetrics } from '../services/metrics-aggregator'
 import type { GeneratedReport, ExecutiveReport, TechnicalReport, ComplianceReport } from '../services/claude-report.service'
 
@@ -128,9 +128,10 @@ interface Props {
   reportType: string
   brandName?: string | null
   brandColor?: string | null
+  logoUrl?: string | null
 }
 
-export function ReportPDF({ metrics, narrative, reportType, brandName, brandColor }: Props) {
+export function ReportPDF({ metrics, narrative, reportType, brandName, brandColor, logoUrl }: Props) {
   const { summary, period, organization, top_threats, top_blocked_ips, top_users, severity_breakdown, top_protocols,
     intrusion_top, intrusion_not_blocked, attack_src_ips, attack_src_countries, users_hit_intrusion,
     users_hit_malware, users_hit_adware, users_hit_spyware, botnet_sources, phishing_users,
@@ -152,8 +153,19 @@ export function ReportPDF({ metrics, narrative, reportType, brandName, brandColo
 
   const FooterEl = ({ label }: { label?: string }) => (
     <View style={s.footer} fixed>
-      <Text style={s.footerText}>{logoText} · {organization.name} · {TYPE_LABELS[reportType] ?? ''} · Confidencial</Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+        {logoUrl ? <Image src={logoUrl} style={{ width: 12, height: 12, objectFit: 'contain' }} /> : null}
+        <Text style={s.footerText}>{logoText} · {organization.name} · {TYPE_LABELS[reportType] ?? ''} · Confidencial</Text>
+      </View>
       <Text style={s.footerText} render={({ pageNumber, totalPages }) => `Página ${pageNumber} de ${totalPages}`} />
+    </View>
+  )
+
+  // Reutilizable en todos los page headers
+  const PageHeaderBrand = (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+      {logoUrl ? <Image src={logoUrl} style={{ width: 22, height: 22, objectFit: 'contain' }} /> : null}
+      <Text style={[s.pageHeaderLogo, { color: acc }]}>{logoText}</Text>
     </View>
   )
 
@@ -166,9 +178,14 @@ export function ReportPDF({ metrics, narrative, reportType, brandName, brandColo
       <Page size="A4" style={s.page}>
         {/* Colored band */}
         <View style={[s.coverBand, { backgroundColor: acc }]}>
-          <View>
-            <Text style={s.coverLogo}>{logoText}</Text>
-            <Text style={s.coverSubtitle}>Firewall Analytics Platform · BC Fabric SAS</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+            {logoUrl ? (
+              <Image src={logoUrl} style={{ width: 56, height: 56, objectFit: 'contain' }} />
+            ) : null}
+            <View>
+              <Text style={s.coverLogo}>{logoText}</Text>
+              <Text style={s.coverSubtitle}>Firewall Analytics Platform · BC Fabric SAS</Text>
+            </View>
           </View>
           <View style={s.coverBadge}>
             <Text style={s.coverBadgeText}>{TYPE_LABELS[reportType] ?? 'REPORTE'}</Text>
@@ -251,7 +268,7 @@ export function ReportPDF({ metrics, narrative, reportType, brandName, brandColo
           <Page size="A4" style={s.page}>
             <View style={s.pageInner}>
               <View style={[s.pageHeader, { borderBottomColor: acc }]}>
-                <Text style={[s.pageHeaderLogo, { color: acc }]}>{logoText}</Text>
+                {PageHeaderBrand}
                 <Text style={s.pageHeaderMeta}>{TYPE_LABELS[reportType]} · {organization.name}</Text>
               </View>
               <Text style={s.tocTitle}>Tabla de Contenido</Text>
@@ -284,7 +301,7 @@ export function ReportPDF({ metrics, narrative, reportType, brandName, brandColo
           <Page size="A4" style={s.page}>
             <View style={s.pageInner}>
               <View style={[s.pageHeader, { borderBottomColor: acc }]}>
-                <Text style={[s.pageHeaderLogo, { color: acc }]}>{logoText}</Text>
+                {PageHeaderBrand}
                 <Text style={s.pageHeaderMeta}>{TYPE_LABELS[reportType]} · {organization.name}{'\n'}Período: {period.start} — {period.end}</Text>
               </View>
 
@@ -339,7 +356,7 @@ export function ReportPDF({ metrics, narrative, reportType, brandName, brandColo
           <Page size="A4" style={s.page}>
             <View style={s.pageInner}>
               <View style={[s.pageHeader, { borderBottomColor: acc }]}>
-                <Text style={[s.pageHeaderLogo, { color: acc }]}>{logoText}</Text>
+                {PageHeaderBrand}
                 <Text style={s.pageHeaderMeta}>{TYPE_LABELS[reportType]} · {organization.name}{'\n'}Recomendaciones estratégicas</Text>
               </View>
 
@@ -408,7 +425,7 @@ export function ReportPDF({ metrics, narrative, reportType, brandName, brandColo
           <Page size="A4" style={s.page}>
             <View style={s.pageInner}>
               <View style={[s.pageHeader, { borderBottomColor: acc }]}>
-                <Text style={[s.pageHeaderLogo, { color: acc }]}>{logoText}</Text>
+                {PageHeaderBrand}
                 <Text style={s.pageHeaderMeta}>{TYPE_LABELS[reportType]} · {organization.name}{'\n'}Seguridad · {period.start} — {period.end}</Text>
               </View>
 
@@ -522,7 +539,7 @@ export function ReportPDF({ metrics, narrative, reportType, brandName, brandColo
           <Page size="A4" style={s.page}>
             <View style={s.pageInner}>
               <View style={[s.pageHeader, { borderBottomColor: acc }]}>
-                <Text style={[s.pageHeaderLogo, { color: acc }]}>{logoText}</Text>
+                {PageHeaderBrand}
                 <Text style={s.pageHeaderMeta}>{TYPE_LABELS[reportType]} · {organization.name}{'\n'}Malware, Botnet y Phishing</Text>
               </View>
 
@@ -628,7 +645,7 @@ export function ReportPDF({ metrics, narrative, reportType, brandName, brandColo
           <Page size="A4" style={s.page}>
             <View style={s.pageInner}>
               <View style={[s.pageHeader, { borderBottomColor: acc }]}>
-                <Text style={[s.pageHeaderLogo, { color: acc }]}>{logoText}</Text>
+                {PageHeaderBrand}
                 <Text style={s.pageHeaderMeta}>{TYPE_LABELS[reportType]} · {organization.name}{'\n'}Aplicaciones y Usuarios Proxy</Text>
               </View>
 
@@ -733,7 +750,7 @@ export function ReportPDF({ metrics, narrative, reportType, brandName, brandColo
           <Page size="A4" style={s.page}>
             <View style={s.pageInner}>
               <View style={[s.pageHeader, { borderBottomColor: acc }]}>
-                <Text style={[s.pageHeaderLogo, { color: acc }]}>{logoText}</Text>
+                {PageHeaderBrand}
                 <Text style={s.pageHeaderMeta}>{TYPE_LABELS[reportType]} · {organization.name}{'\n'}VPN e Historial de Sesiones</Text>
               </View>
 
@@ -809,7 +826,7 @@ export function ReportPDF({ metrics, narrative, reportType, brandName, brandColo
           <Page size="A4" style={s.page}>
             <View style={s.pageInner}>
               <View style={[s.pageHeader, { borderBottomColor: acc }]}>
-                <Text style={[s.pageHeaderLogo, { color: acc }]}>{logoText}</Text>
+                {PageHeaderBrand}
                 <Text style={s.pageHeaderMeta}>{TYPE_LABELS[reportType]} · {organization.name}{'\n'}Estadísticas y Recomendaciones</Text>
               </View>
 
@@ -892,7 +909,7 @@ export function ReportPDF({ metrics, narrative, reportType, brandName, brandColo
             <Page size="A4" style={s.page}>
               <View style={s.pageInner}>
                 <View style={[s.pageHeader, { borderBottomColor: acc }]}>
-                  <Text style={[s.pageHeaderLogo, { color: acc }]}>{logoText}</Text>
+                  {PageHeaderBrand}
                   <Text style={s.pageHeaderMeta}>{TYPE_LABELS[reportType]} · {organization.name}{'\n'}Apéndice A — Inventario de dispositivos</Text>
                 </View>
                 <View style={s.section}>
@@ -932,7 +949,7 @@ export function ReportPDF({ metrics, narrative, reportType, brandName, brandColo
           <Page size="A4" style={s.page}>
             <View style={s.pageInner}>
               <View style={[s.pageHeader, { borderBottomColor: acc }]}>
-                <Text style={[s.pageHeaderLogo, { color: acc }]}>{logoText}</Text>
+                {PageHeaderBrand}
                 <Text style={s.pageHeaderMeta}>{TYPE_LABELS[reportType]} · {organization.name}{'\n'}Resumen de cumplimiento · {period.start} — {period.end}</Text>
               </View>
 
@@ -979,7 +996,7 @@ export function ReportPDF({ metrics, narrative, reportType, brandName, brandColo
           <Page size="A4" style={s.page}>
             <View style={s.pageInner}>
               <View style={[s.pageHeader, { borderBottomColor: acc }]}>
-                <Text style={[s.pageHeaderLogo, { color: acc }]}>{logoText}</Text>
+                {PageHeaderBrand}
                 <Text style={s.pageHeaderMeta}>{TYPE_LABELS[reportType]} · {organization.name}{'\n'}Hallazgos de auditoría</Text>
               </View>
 
@@ -1021,7 +1038,7 @@ export function ReportPDF({ metrics, narrative, reportType, brandName, brandColo
           <Page size="A4" style={s.page}>
             <View style={s.pageInner}>
               <View style={[s.pageHeader, { borderBottomColor: acc }]}>
-                <Text style={[s.pageHeaderLogo, { color: acc }]}>{logoText}</Text>
+                {PageHeaderBrand}
                 <Text style={s.pageHeaderMeta}>{TYPE_LABELS[reportType]} · {organization.name}{'\n'}Plan de remediación</Text>
               </View>
 
@@ -1086,7 +1103,7 @@ export function ReportPDF({ metrics, narrative, reportType, brandName, brandColo
             <Page size="A4" style={s.page}>
               <View style={s.pageInner}>
                 <View style={[s.pageHeader, { borderBottomColor: acc }]}>
-                  <Text style={[s.pageHeaderLogo, { color: acc }]}>{logoText}</Text>
+                  {PageHeaderBrand}
                   <Text style={s.pageHeaderMeta}>{TYPE_LABELS[reportType]} · {organization.name}{'\n'}Apéndice — Activos monitoreados</Text>
                 </View>
                 <View style={s.section}>

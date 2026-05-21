@@ -80,7 +80,7 @@ export async function sendAlertEmail(
 ) {
   const { data: settings } = await admin
     .from('org_settings')
-    .select('alert_email_enabled, alert_email_recipients, brand_name')
+    .select('alert_email_enabled, alert_email_recipients, brand_name, logo_url, brand_color')
     .eq('org_id', orgId)
     .single()
 
@@ -94,7 +94,7 @@ export async function sendAlertEmail(
     await sendMail({
       to:      settings.alert_email_recipients,
       subject: `[${alert.severity.toUpperCase()}] Alerta: ${alert.title}`,
-      html:    alertEmailHtml({ orgName, alertTitle: alert.title, severity: alert.severity, description: alert.description, deviceName: null, srcIp: null, dstIp: null, detectedAt: alert.created_at, dashboardUrl: siteUrl }),
+      html:    alertEmailHtml({ orgName, alertTitle: alert.title, severity: alert.severity, description: alert.description, deviceName: null, srcIp: null, dstIp: null, detectedAt: alert.created_at, dashboardUrl: siteUrl, logoUrl: settings.logo_url, brandColor: settings.brand_color }),
       text:    alertEmailText({ orgName, alertTitle: alert.title, severity: alert.severity, description: alert.description, deviceName: null, srcIp: null, dstIp: null, detectedAt: alert.created_at, dashboardUrl: siteUrl }),
     })
   } catch (err) {

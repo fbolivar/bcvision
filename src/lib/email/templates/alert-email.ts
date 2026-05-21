@@ -8,6 +8,8 @@ interface AlertEmailData {
   dstIp:        string | null
   detectedAt:   string
   dashboardUrl: string
+  logoUrl?:     string | null
+  brandColor?:  string | null
 }
 
 const SEV_COLOR: Record<string, string> = {
@@ -18,8 +20,12 @@ const SEV_COLOR: Record<string, string> = {
 }
 
 export function alertEmailHtml(d: AlertEmailData): string {
-  const color = SEV_COLOR[d.severity] ?? '#64748b'
-  const label = d.severity.toUpperCase()
+  const color      = SEV_COLOR[d.severity] ?? '#64748b'
+  const accentColor = d.brandColor ?? '#3b82f6'
+  const label      = d.severity.toUpperCase()
+  const logoHtml   = d.logoUrl
+    ? `<img src="${d.logoUrl}" alt="${d.orgName}" style="height:40px;max-width:120px;object-fit:contain;display:block;" />`
+    : `<span style="font-size:20px;font-weight:700;color:#ffffff;">🛡️ BCVision</span>`
   return `<!DOCTYPE html>
 <html lang="es">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -30,10 +36,9 @@ export function alertEmailHtml(d: AlertEmailData): string {
 <table width="600" cellpadding="0" cellspacing="0" style="background:#0d1520;border-radius:16px;border:1px solid #1e3a5f;overflow:hidden;max-width:600px;width:100%;">
 
   <!-- Header -->
-  <tr><td style="background:linear-gradient(135deg,#0f2038,#1a1d3a);padding:28px 32px;border-bottom:1px solid #1e3a5f;">
+  <tr><td style="background:linear-gradient(135deg,#0f2038,#1a1d3a);padding:28px 32px;border-bottom:1px solid ${accentColor}44;">
     <table width="100%" cellpadding="0" cellspacing="0"><tr>
-      <td><span style="font-size:20px;font-weight:700;color:#ffffff;">🛡️ BCVision</span><br>
-      <span style="font-size:12px;color:#475569;">Sistema de Seguridad — ${d.orgName}</span></td>
+      <td>${logoHtml}<span style="font-size:12px;color:#475569;display:block;margin-top:6px;">Sistema de Seguridad — ${d.orgName}</span></td>
       <td align="right"><span style="background:${color}22;border:1px solid ${color}55;color:${color};padding:6px 14px;border-radius:20px;font-size:11px;font-weight:700;letter-spacing:1px;">${label}</span></td>
     </tr></table>
   </td></tr>

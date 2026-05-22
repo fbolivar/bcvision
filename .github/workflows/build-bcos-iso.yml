@@ -52,10 +52,11 @@ jobs:
       - name: Extract ISO from image
         run: |
           mkdir -p output
-          # Run container with --privileged to allow any required filesystem ops
-          docker run --rm --privileged \
-            --volume "$(pwd)/output:/output" \
-            bcos-builder:${{ steps.ver.outputs.VERSION }}
+          # docker cp extracts the ISO from the image layers (avoids volume-mount shadowing)
+          CID=$(docker create bcos-builder:${{ steps.ver.outputs.VERSION }})
+          docker cp "$CID:/output/bcOS-x86_64.iso" output/bcOS-x86_64.iso
+          docker rm "$CID"
+          ls -lh output/
 
       - name: Rename ISO with version
         run: |

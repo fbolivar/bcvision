@@ -9,6 +9,7 @@ import { getParser }                           from './parsers/index'
 import { openDatabase, saveEvent, cleanOldEvents, getDatabaseSize } from './storage'
 import { startSyncLoop }                       from './aggregator'
 import { startWebServer }                      from './web'
+import { forwardEvent }                        from './forwarder'
 import type { FirewallBrand }                  from './types'
 
 // ── Init ──────────────────────────────────────────────────────────
@@ -70,6 +71,12 @@ async function processMessage(raw: string, sourceIp: string) {
     msgSaved++
     if (event.severity === 'critical' || event.severity === 'high') {
       console.log(`[bcOS] 🚨 ${brand} | ${sourceIp} | ${event.event_type} | ${event.severity}`)
+      const cfg = getConfig()
+      if (cfg.bcvision_url && cfg.bcvision_api_key) {
+        forwardEvent(cfg, syslogMsg, event).catch(err =>
+          console.error(`[bcOS] Error reenviando a BCVision: ${(err as Error).message}`)
+        )
+      }
     }
   } catch (err) {
     console.error(`[bcOS] Error guardando evento: ${(err as Error).message}`)

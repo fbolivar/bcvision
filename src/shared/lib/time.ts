@@ -1,6 +1,6 @@
 export function resolveHours(
   raw: string | undefined,
-  defaultHours = 24
+  defaultHours = 0
 ): { hours: number; isLive: boolean; param: string; label: string } {
   const param  = raw ?? String(defaultHours)
   const isLive = param === '0'

@@ -1,7 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
 import { Topbar } from '@/shared/components/topbar'
-import { TimeFilter } from '@/shared/components/time-filter'
-import { resolveHours } from '@/shared/lib/time'
 import { LiveRefresh } from '@/shared/components/live-refresh'
 import { RecentEventsTable } from '@/features/dashboard/components/recent-events-table'
 import { getThreatEvents, getThreatSummary } from '@/features/threats/services/threats.service'
@@ -20,7 +18,8 @@ const SEVERITIES: { sev: Severity; label: string; color: string; glow: string }[
 
 export default async function ThreatsPage({ searchParams }: PageProps) {
   const sp = await searchParams
-  const { hours, isLive, param, label } = resolveHours(sp['hours'])
+  const hours = 24
+  const label = 'últimas 24h'
   const page     = parseInt(sp['page'] ?? '1', 10)
   const severity = sp['severity'] as Severity | undefined
   const PAGE_SIZE = 50
@@ -37,23 +36,16 @@ export default async function ThreatsPage({ searchParams }: PageProps) {
   const totalPages = Math.ceil(total / PAGE_SIZE)
 
   function severityHref(sev: Severity) {
-    const p = new URLSearchParams({ hours: param })
-    if (severity !== sev) p.set('severity', sev)
-    return `/threats?${p.toString()}`
+    if (severity === sev) return '/threats'
+    return `/threats?severity=${sev}`
   }
 
   return (
     <div className="flex flex-col flex-1 min-h-0">
-      <LiveRefresh enabled={isLive} />
+      <LiveRefresh enabled={false} />
       <Topbar title="Amenazas y bloqueos" subtitle={`${total.toLocaleString()} eventos · ${label}`} />
 
       <div className="flex-1 p-6 space-y-5 overflow-y-auto mesh-bg">
-
-        {/* Time filter */}
-        <div className="flex items-center justify-between">
-          <span className="text-xs text-[#334155] font-medium">Período de análisis</span>
-          <TimeFilter current={param} />
-        </div>
 
         {/* Severity cards */}
         <div className="grid grid-cols-4 gap-3">

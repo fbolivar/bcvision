@@ -1,18 +1,15 @@
 import { createClient } from '@/lib/supabase/server'
 import { Topbar } from '@/shared/components/topbar'
-import { TimeFilter } from '@/shared/components/time-filter'
-import { resolveHours } from '@/shared/lib/time'
 import { LiveRefresh } from '@/shared/components/live-refresh'
 import { getUserActivity, getTopSourceIps } from '@/features/users-net/services/users-net.service'
 import { formatBytes, formatNumber } from '@/shared/lib/utils'
 import { Users, Network, ShieldX } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
-interface PageProps { searchParams: Promise<Record<string, string>> }
 
-export default async function UsersNetPage({ searchParams }: PageProps) {
-  const sp = await searchParams
-  const { hours, isLive, param, label } = resolveHours(sp['hours'])
+export default async function UsersNetPage() {
+  const hours = 24
+  const label = 'últimas 24h'
 
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -22,16 +19,10 @@ export default async function UsersNetPage({ searchParams }: PageProps) {
 
   return (
     <div className="flex flex-col flex-1 min-h-0">
-      <LiveRefresh enabled={isLive} />
+      <LiveRefresh enabled={false} />
       <Topbar title="Usuarios de red" subtitle={`Actividad de usuarios e IPs · ${label}`} />
 
       <div className="flex-1 p-6 space-y-5 overflow-y-auto mesh-bg">
-
-        {/* Time filter */}
-        <div className="flex items-center justify-between">
-          <span className="text-xs text-[#334155] font-medium">Período de análisis</span>
-          <TimeFilter current={param} />
-        </div>
 
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
 

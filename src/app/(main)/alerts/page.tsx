@@ -1,7 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
 import { Topbar } from '@/shared/components/topbar'
-import { TimeFilter } from '@/shared/components/time-filter'
-import { resolveHours } from '@/shared/lib/time'
 import { LiveRefresh } from '@/shared/components/live-refresh'
 import { AlertCard } from '@/features/alerts/components/alert-card'
 import { getAlerts } from '@/features/alerts/services/alerts-server.service'
@@ -20,7 +18,8 @@ const STATUS_TABS: { value: AlertStatus | 'all'; label: string; color: string }[
 
 export default async function AlertsPage({ searchParams }: PageProps) {
   const sp = await searchParams
-  const { hours, isLive, param, label } = resolveHours(sp['hours'])
+  const hours = 24
+  const label = 'últimas 24h'
   const status = sp['status'] as AlertStatus | undefined
 
   const supabase = await createClient()
@@ -33,14 +32,13 @@ export default async function AlertsPage({ searchParams }: PageProps) {
   const high     = alerts.filter(a => a.severity === 'high').length
 
   function tabHref(value: AlertStatus | 'all') {
-    const p = new URLSearchParams({ hours: param })
-    if (value !== 'all') p.set('status', value)
-    return `/alerts?${p.toString()}`
+    if (value === 'all') return '/alerts'
+    return `/alerts?status=${value}`
   }
 
   return (
     <div className="flex flex-col flex-1 min-h-0">
-      <LiveRefresh enabled={isLive} />
+      <LiveRefresh enabled={false} />
       <Topbar title="Alertas de seguridad" subtitle={`${alerts.length} alerta${alerts.length !== 1 ? 's' : ''} · ${label}`} />
 
       <div className="flex-1 p-6 space-y-5 overflow-y-auto mesh-bg">
@@ -84,7 +82,6 @@ export default async function AlertsPage({ searchParams }: PageProps) {
             })}
           </div>
 
-          <TimeFilter current={param} />
         </div>
 
         {/* Alerts list */}

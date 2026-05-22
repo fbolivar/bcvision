@@ -1,7 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
 import { Topbar } from '@/shared/components/topbar'
-import { TimeFilter } from '@/shared/components/time-filter'
-import { resolveHours } from '@/shared/lib/time'
 import { LiveRefresh } from '@/shared/components/live-refresh'
 import { AddDeviceForm } from '@/features/devices/components/add-device-form'
 import { DeviceCard } from '@/features/devices/components/device-card'
@@ -23,8 +21,7 @@ const SYSLOG_INSTRUCTIONS: Record<FirewallBrand, string[]> = {
 
 export default async function DevicesPage({ searchParams }: PageProps) {
   const sp = await searchParams
-  const { hours, isLive, param, label } = resolveHours(sp['hours'])
-  const since = new Date(Date.now() - hours * 3_600_000).toISOString()
+  const label = 'últimas 24h'
 
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -39,7 +36,7 @@ export default async function DevicesPage({ searchParams }: PageProps) {
 
   return (
     <div className="flex flex-col flex-1 min-h-0">
-      <LiveRefresh enabled={isLive} />
+      <LiveRefresh enabled={false} />
       <Topbar title="Dispositivos" subtitle={`${devices.length} dispositivo${devices.length !== 1 ? 's' : ''} activo${devices.length !== 1 ? 's' : ''} · ${label}`} />
 
       <div className="flex-1 p-6 space-y-5 overflow-y-auto mesh-bg">
@@ -50,7 +47,6 @@ export default async function DevicesPage({ searchParams }: PageProps) {
             Registra tus firewalls para que el listener los reconozca por IP y aplique el parser correcto.
           </p>
           <div className="flex items-center gap-3">
-            <TimeFilter current={param} />
             {canManage && <AddDeviceForm orgId={orgId} />}
           </div>
         </div>

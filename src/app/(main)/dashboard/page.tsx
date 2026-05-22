@@ -2,8 +2,6 @@ import { Activity, Shield, AlertTriangle, Monitor, TrendingUp, Database } from '
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { Topbar } from '@/shared/components/topbar'
-import { TimeFilter } from '@/shared/components/time-filter'
-import { resolveHours } from '@/shared/lib/time'
 import { LiveRefresh } from '@/shared/components/live-refresh'
 import { StatCard } from '@/features/dashboard/components/stat-card'
 import { RecentEventsTable } from '@/features/dashboard/components/recent-events-table'
@@ -20,11 +18,10 @@ import type { Device } from '@/shared/types/database'
 import Link from 'next/link'
 
 export const dynamic = 'force-dynamic'
-interface PageProps { searchParams: Promise<Record<string, string>> }
 
-export default async function DashboardPage({ searchParams }: PageProps) {
-  const sp = await searchParams
-  const { hours, isLive, param, label } = resolveHours(sp['hours'])
+export default async function DashboardPage() {
+  const hours = 24
+  const label = 'últimas 24h'
 
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -50,16 +47,10 @@ export default async function DashboardPage({ searchParams }: PageProps) {
 
   return (
     <div className="flex flex-col flex-1 min-h-0">
-      <LiveRefresh enabled={isLive} />
+      <LiveRefresh enabled={false} />
       <Topbar title="Dashboard" subtitle={`Resumen de actividad · ${label}`} />
 
       <div className="flex-1 p-6 space-y-5 overflow-y-auto mesh-bg">
-
-        {/* Time filter */}
-        <div className="flex items-center justify-between">
-          <span className="text-xs text-[#334155] font-medium">Período de análisis</span>
-          <TimeFilter current={param} />
-        </div>
 
         {/* Stats grid */}
         <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">

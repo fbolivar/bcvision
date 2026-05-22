@@ -1,7 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
 import { Topbar } from '@/shared/components/topbar'
-import { TimeFilter } from '@/shared/components/time-filter'
-import { resolveHours } from '@/shared/lib/time'
 import { LiveRefresh } from '@/shared/components/live-refresh'
 import {
   getSecuritySummary, getThreatCategories, getTopAttackSources, getGeoAttacks, getAffectedUsers
@@ -10,7 +8,6 @@ import { formatNumber } from '@/shared/lib/utils'
 import { ShieldAlert, Bug, Globe, Users, Siren, Network, ShieldX } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
-interface PageProps { searchParams: Promise<Record<string, string>> }
 
 const CATEGORY_COLORS: Record<string, string> = {
   ips:       '#ef4444',
@@ -28,9 +25,9 @@ function getCategoryColor(cat: string): string {
   return '#64748b'
 }
 
-export default async function SecurityPage({ searchParams }: PageProps) {
-  const sp = await searchParams
-  const { hours, isLive, param, label } = resolveHours(sp['hours'])
+export default async function SecurityPage() {
+  const hours = 24
+  const label = 'últimas 24h'
 
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -58,16 +55,10 @@ export default async function SecurityPage({ searchParams }: PageProps) {
 
   return (
     <div className="flex flex-col flex-1 min-h-0">
-      <LiveRefresh enabled={isLive} />
+      <LiveRefresh enabled={false} />
       <Topbar title="Inteligencia de Seguridad" subtitle={`${formatNumber(totalThreats)} amenazas detectadas · ${label}`} />
 
       <div className="flex-1 p-6 space-y-5 overflow-y-auto mesh-bg">
-
-        {/* Time filter */}
-        <div className="flex items-center justify-between">
-          <span className="text-xs text-[#334155] font-medium">Período de análisis</span>
-          <TimeFilter current={param} />
-        </div>
 
         {/* Stats */}
         <div className="grid grid-cols-2 xl:grid-cols-3 gap-4">

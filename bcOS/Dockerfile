@@ -1,94 +1,128 @@
-# bcOS ISO Builder
-# Produces bcOS-x86_64.iso inside /output/
-#
-# Build:  docker build -t bcos-builder .
-# Run:    docker run --rm -v "$(pwd)/output:/output" bcos-builder
+# ── Stage 1: Compile bcOS agent ────────────────────────────────────
+FROM node:20-alpine AS agent-build
 
-FROM alpine:3.19 AS base
+WORKDIR /app
+COPY agent/package*.json ./
+RUN npm ci
 
-# ── Build tools ────────────────────────────────────────────────────
+COPY agent/src    ./src
+COPY agent/tsconfig.json ./
+RUN npx tsc
+
+# Prune to production deps only
+RUN npm ci --omit=dev
+
+# ── Stage 2: Build the ISO ─────────────────────────────────────────
+FROM alpine:3.19 AS iso-builder
+
 RUN apk add --no-cache \
-    alpine-sdk \
-    curl \
     xorriso \
-    grub \
-    grub-efi \
+    curl \
+    tar \
+    cpio \
+    gzip \
+    syslinux \
     mtools \
-    squashfs-tools \
-    nodejs \
-    npm \
-    syslinux
+    findutils \
+    bash
 
-# ── Node.js agent: install deps and compile ────────────────────────
-WORKDIR /build/agent
-COPY agent/package.json agent/package-lock.json* ./
-RUN npm ci --omit=dev 2>/dev/null || npm install --omit=dev
-COPY agent/ ./
-RUN npm run build 2>/dev/null || npx tsc || true
+WORKDIR /build
 
-# ── ISO staging area ───────────────────────────────────────────────
-WORKDIR /staging
+# Download official Alpine Linux virt ISO (small ~60 MB, no extra packages)
+ARG ALPINE_VER=3.19.1
+RUN echo "Descargando Alpine Linux ${ALPINE_VER}..." && \
+    curl -fSL --retry 3 \
+    "https://dl-cdn.alpinelinux.org/alpine/v3.19/releases/x86_64/alpine-virt-${ALPINE_VER}-x86_64.iso" \
+    -o alpine.iso && \
+    echo "ISO descargada: $(du -sh alpine.iso | cut -f1)"
 
-# Create Alpine rootfs structure
-RUN mkdir -p \
-    rootfs/etc/bcvision \
-    rootfs/etc/init.d \
-    rootfs/etc/local.d \
-    rootfs/opt/bcos-agent/dist \
-    rootfs/opt/bcos-agent/node_modules \
-    rootfs/opt/bcos-agent/ui \
-    rootfs/usr/share/bcos \
-    boot/grub
+# Extract ISO contents (xorriso can do this without privileges)
+RUN mkdir -p iso-work && \
+    xorriso -osirrox on -indev alpine.iso -extract / iso-work/ 2>/dev/null; \
+    ls iso-work/
+
+# ── Build bcOS overlay (apkovl format) ─────────────────────────────
+# Alpine's apkovl mechanism loads this tar.gz on boot to restore config
+
+WORKDIR /overlay
+
+# Copy Node.js binary compiled for musl/Alpine from stage 1
+COPY --from=agent-build /usr/local/bin/node   usr/local/bin/node
+COPY --from=agent-build /usr/local/lib/       usr/local/lib/
 
 # Copy compiled agent
-RUN cp -r /build/agent/dist/*       rootfs/opt/bcos-agent/dist/ 2>/dev/null || true
-RUN cp -r /build/agent/node_modules rootfs/opt/bcos-agent/
-RUN cp -r /build/agent/ui/          rootfs/opt/bcos-agent/ui/
-RUN cp    /build/agent/package.json rootfs/opt/bcos-agent/
+RUN mkdir -p opt/bcos-agent
+COPY --from=agent-build /app/dist/            opt/bcos-agent/dist/
+COPY --from=agent-build /app/node_modules/    opt/bcos-agent/node_modules/
+COPY --from=agent-build /app/package.json     opt/bcos-agent/package.json
+COPY agent/ui/                                opt/bcos-agent/ui/
 
-# Default config (empty — user configures via web UI on first boot)
-RUN echo '{}' > rootfs/etc/bcvision/config.json
+# Default config (empty — user fills via web UI)
+RUN mkdir -p etc/bcvision && echo '{"syslog_udp_port":514,"syslog_tcp_port":514,"web_port":80,"agent_name":"bcOS-Agent","bcvision_url":"","bcvision_api_key":""}' \
+    > etc/bcvision/config.json
 
-# ── OpenRC service script ───────────────────────────────────────────
-COPY scripts/bcos-agent.initd rootfs/etc/init.d/bcos-agent
-RUN chmod +x rootfs/etc/init.d/bcos-agent
+# Default brand map (empty)
+RUN echo '{}' > etc/bcvision/brand-map.json
 
-# ── GRUB config ─────────────────────────────────────────────────────
-COPY iso/grub/grub.cfg boot/grub/grub.cfg
+# OpenRC service script
+RUN mkdir -p etc/init.d etc/runlevels/default
+COPY scripts/bcos-agent.initd etc/init.d/bcos-agent
+RUN chmod +x etc/init.d/bcos-agent && \
+    ln -sf /etc/init.d/bcos-agent etc/runlevels/default/bcos-agent
 
-# ── Alpine minimal base system via apkovl ───────────────────────────
-# Download Alpine mini rootfs for the target architecture
-RUN ALPINE_VER=3.19.1 && \
-    curl -fsSL "https://dl-cdn.alpinelinux.org/alpine/v3.19/releases/x86_64/alpine-minirootfs-${ALPINE_VER}-x86_64.tar.gz" \
-         -o /tmp/alpine-minirootfs.tar.gz && \
-    tar -xzf /tmp/alpine-minirootfs.tar.gz -C rootfs/
+# Auto-install packages on first boot (sets up networking + node dependencies)
+RUN mkdir -p etc/local.d
+COPY scripts/bcos-firstboot.sh etc/local.d/00-bcos-firstboot.start
+RUN chmod +x etc/local.d/00-bcos-firstboot.start
 
-# Install Node.js in the rootfs (for running our agent)
-RUN chroot rootfs /bin/sh -c "apk add --no-cache nodejs npm openrc" 2>/dev/null || true
+# Enable local service (runs etc/local.d scripts)
+RUN ln -sf /etc/init.d/local etc/runlevels/default/local
 
-# Enable the agent service
-RUN chroot rootfs /bin/sh -c "rc-update add bcos-agent default" 2>/dev/null || true
+# Issue file (shown at login prompt)
+RUN printf 'Welcome to bcOS — Syslog Agent\nAccede a la Web UI: http://<esta-IP>/\n' > etc/issue
 
-# ── Create squashfs rootfs ──────────────────────────────────────────
-RUN mksquashfs rootfs/ boot/rootfs.squashfs \
-    -comp xz -Xbcj x86 \
-    -b 1M -no-progress
+# Profile: show IP on login
+RUN mkdir -p etc/profile.d && printf '#!/bin/sh\necho ""\necho " bcOS Syslog Agent"\nip -4 addr show eth0 2>/dev/null | grep -oP "(?<=inet )[\d.]+" | while read ip; do\n  echo " Web UI: http://$ip/"\ndone\necho ""\n' > etc/profile.d/bcos.sh
 
-# ── Extract kernel + initrd from Alpine ISO ─────────────────────────
-RUN ALPINE_VER=3.19.1 && \
-    curl -fsSL "https://dl-cdn.alpinelinux.org/alpine/v3.19/releases/x86_64/alpine-standard-${ALPINE_VER}-x86_64.iso" \
-         -o /tmp/alpine.iso && \
-    xorriso -osirrox on -indev /tmp/alpine.iso -extract /boot/vmlinuz-lts boot/vmlinuz-lts && \
-    xorriso -osirrox on -indev /tmp/alpine.iso -extract /boot/initramfs-lts boot/initramfs-lts
+# Pack apkovl
+WORKDIR /build
+RUN tar -czf bcos.apkovl.tar.gz -C /overlay . && \
+    echo "apkovl: $(du -sh bcos.apkovl.tar.gz | cut -f1)"
 
-# ── Assemble ISO with GRUB ──────────────────────────────────────────
-RUN grub-mkrescue \
-    --output=/output/bcOS-x86_64.iso \
-    /staging/boot \
-    -- \
-    -volid "bcOS" \
-    -appid "bcOS Syslog Agent" \
-    2>&1
+# ── Inject apkovl into Alpine ISO ──────────────────────────────────
+# Copy apkovl to ISO work directory
+RUN cp bcos.apkovl.tar.gz iso-work/bcos.apkovl.tar.gz
 
-RUN echo "[bcOS] ISO creada en /output/bcOS-x86_64.iso" && \
+# Patch GRUB config to load our overlay on boot
+# The apkovl= parameter tells Alpine's init to load the overlay file
+RUN if [ -f iso-work/boot/grub/grub.cfg ]; then \
+      sed -i 's|modules=loop,squashfs|modules=loop,squashfs,overlay|g' iso-work/boot/grub/grub.cfg; \
+      sed -i 's|quiet|quiet apkovl=/bcos.apkovl.tar.gz|g' iso-work/boot/grub/grub.cfg; \
+      cat iso-work/boot/grub/grub.cfg; \
+    fi
+
+# Patch syslinux config too (fallback for BIOS boot)
+RUN for cfg in iso-work/boot/syslinux/syslinux.cfg iso-work/boot/syslinux/extlinux.conf iso-work/syslinux.cfg; do \
+      if [ -f "$cfg" ]; then \
+        sed -i 's|quiet|quiet apkovl=/bcos.apkovl.tar.gz|g' "$cfg"; \
+      fi; \
+    done
+
+# ── Repack ISO ─────────────────────────────────────────────────────
+# Use xorriso to create a new hybrid ISO (BIOS + EFI compatible)
+RUN mkdir -p /output && \
+    xorriso -as mkisofs \
+      -o /output/bcOS-x86_64.iso \
+      -volid "bcOS" \
+      -rational-rock \
+      -joliet \
+      -isohybrid-mbr /usr/share/syslinux/isohdpfx.bin \
+      -eltorito-boot boot/syslinux/isolinux.bin \
+      -eltorito-catalog boot/syslinux/boot.cat \
+      -no-emul-boot -boot-load-size 4 -boot-info-table \
+      iso-work/ 2>&1 | tail -5 && \
+    echo "" && \
+    echo "╔══════════════════════════════════════╗" && \
+    echo "║  bcOS ISO lista en /output/          ║" && \
+    echo "╚══════════════════════════════════════╝" && \
     ls -lh /output/bcOS-x86_64.iso

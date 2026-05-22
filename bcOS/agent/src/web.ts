@@ -1,15 +1,21 @@
-import * as http    from 'http'
-import * as fs      from 'fs'
-import * as path    from 'path'
+import * as http from 'http'
+import * as fs   from 'fs'
+import * as path from 'path'
+
 import { getConfig, saveConfig, isConfigured } from './config'
-import { getStats }                            from './forwarder'
+import { getAgentStats }                        from './index'
+import {
+  queryEvents, countEvents,
+  getHourlyStats, getTopSources,
+  getDatabaseSize,
+} from './storage'
 
 const UI_DIR = path.join(__dirname, '..', 'ui')
 
-function serveFile(res: http.ServerResponse, filePath: string, contentType: string) {
+function serveFile(res: http.ServerResponse, filePath: string, ct: string) {
   try {
     const data = fs.readFileSync(filePath)
-    res.writeHead(200, { 'Content-Type': contentType })
+    res.writeHead(200, { 'Content-Type': ct })
     res.end(data)
   } catch {
     res.writeHead(404, { 'Content-Type': 'text/plain' })
@@ -20,49 +26,46 @@ function serveFile(res: http.ServerResponse, filePath: string, contentType: stri
 function readBody(req: http.IncomingMessage): Promise<string> {
   return new Promise((resolve, reject) => {
     let body = ''
-    req.on('data', chunk => { body += chunk.toString() })
+    req.on('data', c => { body += c.toString() })
     req.on('end', () => resolve(body))
     req.on('error', reject)
   })
 }
 
 function json(res: http.ServerResponse, status: number, data: unknown) {
-  const body = JSON.stringify(data)
   res.writeHead(status, {
     'Content-Type':                'application/json',
     'Access-Control-Allow-Origin': '*',
   })
-  res.end(body)
+  res.end(JSON.stringify(data))
 }
 
 export function startWebServer(port: number) {
   const server = http.createServer(async (req, res) => {
-    const url    = req.url ?? '/'
+    const url    = req.url?.split('?')[0] ?? '/'
+    const query  = Object.fromEntries(new URLSearchParams(req.url?.split('?')[1] ?? '').entries())
     const method = req.method ?? 'GET'
 
-    // ── API ──────────────────────────────────────────────────────
+    // ── Status ─────────────────────────────────────────────────
     if (url === '/api/status' && method === 'GET') {
       const cfg   = getConfig()
-      const stats = getStats()
+      const stats = getAgentStats()
       return json(res, 200, {
-        configured:  isConfigured(),
-        agent_name:  cfg.agent_name,
+        configured:   isConfigured(),
+        agent_name:   cfg.agent_name,
         bcvision_url: cfg.bcvision_url,
+        db_size:      getDatabaseSize(),
         stats: {
-          started_at:          stats.startedAt.toISOString(),
-          messages_received:   stats.messagesReceived,
-          messages_forwarded:  stats.messagesForwarded,
-          messages_failed:     stats.messagesFailed,
-          last_message:        stats.lastMessage?.toISOString() ?? null,
-          connected:           stats.connected,
-          last_error:          stats.lastError,
+          messages_received: stats.msgReceived,
+          messages_saved:    stats.msgSaved,
+          last_message:      stats.lastMsgAt?.toISOString() ?? null,
         },
       })
     }
 
+    // ── Config GET ──────────────────────────────────────────────
     if (url === '/api/config' && method === 'GET') {
       const cfg = getConfig()
-      // Never return the API key — mask it
       return json(res, 200, {
         bcvision_url:     cfg.bcvision_url,
         bcvision_api_key: cfg.bcvision_api_key ? '***' : '',
@@ -73,11 +76,10 @@ export function startWebServer(port: number) {
       })
     }
 
+    // ── Config POST ─────────────────────────────────────────────
     if (url === '/api/config' && method === 'POST') {
       try {
-        const body = await readBody(req)
-        const data = JSON.parse(body) as Record<string, unknown>
-
+        const data = JSON.parse(await readBody(req)) as Record<string, unknown>
         const updates: Record<string, unknown> = {}
         if (typeof data.bcvision_url === 'string' && data.bcvision_url)
           updates.bcvision_url = data.bcvision_url.replace(/\/$/, '')
@@ -85,11 +87,8 @@ export function startWebServer(port: number) {
           updates.bcvision_api_key = data.bcvision_api_key
         if (typeof data.agent_name === 'string' && data.agent_name)
           updates.agent_name = data.agent_name
-        if (typeof data.syslog_udp_port === 'number')
-          updates.syslog_udp_port = data.syslog_udp_port
-        if (typeof data.syslog_tcp_port === 'number')
-          updates.syslog_tcp_port = data.syslog_tcp_port
-
+        if (typeof data.syslog_udp_port === 'number') updates.syslog_udp_port = data.syslog_udp_port
+        if (typeof data.syslog_tcp_port === 'number') updates.syslog_tcp_port = data.syslog_tcp_port
         saveConfig(updates)
         return json(res, 200, { ok: true })
       } catch (err) {
@@ -97,6 +96,7 @@ export function startWebServer(port: number) {
       }
     }
 
+    // ── Test BCVision connection ────────────────────────────────
     if (url === '/api/test' && method === 'POST') {
       const cfg = getConfig()
       if (!isConfigured()) return json(res, 400, { error: 'No configurado' })
@@ -112,31 +112,40 @@ export function startWebServer(port: number) {
       }
     }
 
-    // ── Static UI ────────────────────────────────────────────────
+    // ── Events query ────────────────────────────────────────────
+    if (url === '/api/events' && method === 'GET') {
+      const events = queryEvents({
+        limit:      parseInt(query.limit ?? '100', 10),
+        offset:     parseInt(query.offset ?? '0', 10),
+        severity:   query.severity,
+        src_ip:     query.src_ip,
+        event_type: query.event_type,
+        since:      query.since,
+      })
+      const total = countEvents({ since: query.since, severity: query.severity })
+      return json(res, 200, { events, total })
+    }
+
+    // ── Stats ───────────────────────────────────────────────────
+    if (url === '/api/stats' && method === 'GET') {
+      const hours  = parseInt(query.hours ?? '24', 10)
+      const hourly = getHourlyStats(hours)
+      const top    = getTopSources(10, hours)
+      const counts = {
+        total:    countEvents({ since: new Date(Date.now() - hours * 3600_000).toISOString() }),
+        critical: countEvents({ severity: 'critical', since: new Date(Date.now() - hours * 3600_000).toISOString() }),
+        high:     countEvents({ severity: 'high',     since: new Date(Date.now() - hours * 3600_000).toISOString() }),
+      }
+      return json(res, 200, { hourly, top_sources: top, counts, db_size: getDatabaseSize() })
+    }
+
+    // ── Static UI ───────────────────────────────────────────────
     if (url === '/' || url === '/index.html') {
       const page = isConfigured() ? 'dashboard.html' : 'setup.html'
       return serveFile(res, path.join(UI_DIR, page), 'text/html; charset=utf-8')
     }
-
-    if (url === '/setup' || url === '/setup.html') {
-      return serveFile(res, path.join(UI_DIR, 'setup.html'), 'text/html; charset=utf-8')
-    }
-
-    if (url === '/dashboard' || url === '/dashboard.html') {
-      return serveFile(res, path.join(UI_DIR, 'dashboard.html'), 'text/html; charset=utf-8')
-    }
-
-    if (url.startsWith('/assets/')) {
-      const ext = path.extname(url)
-      const ctMap: Record<string, string> = {
-        '.css': 'text/css',
-        '.js':  'application/javascript',
-        '.svg': 'image/svg+xml',
-        '.png': 'image/png',
-      }
-      const ct = ctMap[ext] ?? 'application/octet-stream'
-      return serveFile(res, path.join(UI_DIR, url), ct)
-    }
+    if (url === '/setup')     return serveFile(res, path.join(UI_DIR, 'setup.html'),     'text/html; charset=utf-8')
+    if (url === '/dashboard') return serveFile(res, path.join(UI_DIR, 'dashboard.html'), 'text/html; charset=utf-8')
 
     res.writeHead(404, { 'Content-Type': 'text/plain' })
     res.end('Not Found')

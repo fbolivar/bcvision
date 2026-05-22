@@ -2,78 +2,113 @@ name: Build bcOS ISO
 
 on:
   push:
-    branches: [main]
-    paths:
-      - 'bcOS/**'
+    tags: ['v*']
+    paths-ignore: ['src/**', 'public/**', '*.md']
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version tag (e.g. 1.0.0)'
+        description: 'Version (e.g. 1.0.0)'
         required: false
-        default: 'latest'
+        default: 'dev'
+
+permissions:
+  contents: write
 
 jobs:
-  build:
+  build-iso:
     name: Build bcOS ISO
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
       - name: Set version
-        id: version
+        id: ver
         run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${{ inputs.version }}" ]; then
-            echo "VERSION=${{ inputs.version }}" >> $GITHUB_OUTPUT
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+            echo "TAG=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
           else
-            echo "VERSION=$(date +'%Y%m%d')-$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+            V="${{ inputs.version }}"
+            echo "VERSION=${V:-dev}" >> $GITHUB_OUTPUT
+            echo "TAG=v${V:-dev}" >> $GITHUB_OUTPUT
           fi
 
-      - name: Build bcOS ISO
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          driver: docker
+
+      - name: Build Docker image
         run: |
-          mkdir -p output
           docker build \
-            --tag bcos-builder:${{ steps.version.outputs.VERSION }} \
+            --tag bcos-builder:${{ steps.ver.outputs.VERSION }} \
             --file bcOS/Dockerfile \
             bcOS/
-          docker run --rm \
+        timeout-minutes: 30
+
+      - name: Extract ISO from image
+        run: |
+          mkdir -p output
+          # Run container with --privileged to allow any required filesystem ops
+          docker run --rm --privileged \
             --volume "$(pwd)/output:/output" \
-            bcos-builder:${{ steps.version.outputs.VERSION }}
+            bcos-builder:${{ steps.ver.outputs.VERSION }}
 
       - name: Rename ISO with version
         run: |
-          mv output/bcOS-x86_64.iso output/bcOS-${{ steps.version.outputs.VERSION }}-x86_64.iso
+          ISO_SRC="output/bcOS-x86_64.iso"
+          ISO_DST="output/bcOS-${{ steps.ver.outputs.VERSION }}-x86_64.iso"
+          mv "$ISO_SRC" "$ISO_DST"
+          echo "ISO_FILE=$ISO_DST" >> $GITHUB_ENV
+          echo "ISO_NAME=$(basename $ISO_DST)" >> $GITHUB_ENV
           ls -lh output/
 
-      - name: Upload ISO artifact
+      - name: Generate SHA256
+        run: |
+          cd output
+          sha256sum *.iso > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+
+      - name: Upload artifact (always)
         uses: actions/upload-artifact@v4
         with:
-          name: bcos-iso-${{ steps.version.outputs.VERSION }}
-          path: output/bcOS-*.iso
+          name: bcOS-${{ steps.ver.outputs.VERSION }}
+          path: output/
           retention-days: 30
 
-      - name: Create GitHub Release (on tag)
+      - name: Create GitHub Release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          name: "bcOS ${{ steps.version.outputs.VERSION }}"
+          tag_name: ${{ steps.ver.outputs.TAG }}
+          name: "bcOS ${{ steps.ver.outputs.VERSION }}"
           body: |
-            ## bcOS Syslog Agent — Virtual Appliance
+            ## bcOS ${{ steps.ver.outputs.VERSION }} — Syslog Agent Virtual Appliance
 
-            ### Instalación
-            1. Descarga `bcOS-${{ steps.version.outputs.VERSION }}-x86_64.iso`
-            2. Crea una VM (1 CPU, 512MB RAM) y bootea desde la ISO
-            3. Accede a `http://<IP-del-appliance>/` para configurar
-            4. Ingresa la URL de BCVision y tu clave API
+            ### Novedades
+            - Almacenamiento local en SQLite (365 días en disco, sin costos de Supabase)
+            - Solo alertas críticas/altas se sincronizan con BCVision
+            - Dashboard web local con historial de eventos
+            - Wizard de configuración en 3 pasos
 
-            ### Cambios
-            ${{ github.event.head_commit.message }}
-          files: output/bcOS-*.iso
+            ### Instalación rápida
+            1. Descarga `bcOS-${{ steps.ver.outputs.VERSION }}-x86_64.iso`
+            2. Crea una VM: **2 vCPU · 1 GB RAM · 20 GB disco · Red bridged**
+            3. Bootea desde la ISO
+            4. Accede a `http://<IP-del-appliance>/` en el navegador
+            5. Ingresa la URL de BCVision y tu clave API (Ajustes → Agentes bcOS)
+            6. Apunta el syslog de tus firewalls a esa IP en el puerto 514
+
+            ### Verificación de integridad
+            ```
+            sha256sum -c SHA256SUMS.txt
+            ```
+          files: |
+            output/*.iso
+            output/SHA256SUMS.txt
           draft: false
           prerelease: false
         env:

@@ -1,34 +1,35 @@
 import * as dgram from 'dgram'
 import * as net   from 'net'
-import * as path  from 'path'
 import * as fs    from 'fs'
+import * as path  from 'path'
 
 import { loadConfig, getConfig, isConfigured } from './config'
 import { parseSyslogMessage }                  from './syslog-parser'
 import { getParser }                           from './parsers/index'
-import { forwardEvent, incrementReceived }     from './forwarder'
+import { openDatabase, saveEvent, cleanOldEvents, getDatabaseSize } from './storage'
+import { startSyncLoop }                       from './aggregator'
 import { startWebServer }                      from './web'
 import type { FirewallBrand }                  from './types'
 
-// Load config on boot
+// ── Init ──────────────────────────────────────────────────────────
 loadConfig()
+openDatabase()
 
 const cfg = getConfig()
 
-// ── Detect firewall brand from source IP using config map ──────────
+// ── Brand map: source IP → firewall brand ─────────────────────────
 const BRAND_MAP_PATH = process.env.BCOS_BRAND_MAP_PATH ?? '/etc/bcvision/brand-map.json'
 let brandMap: Record<string, FirewallBrand> = {}
 try {
-  if (fs.existsSync(BRAND_MAP_PATH)) {
+  if (fs.existsSync(BRAND_MAP_PATH))
     brandMap = JSON.parse(fs.readFileSync(BRAND_MAP_PATH, 'utf8')) as Record<string, FirewallBrand>
-  }
 } catch { /* fallback to generic */ }
 
 function getBrand(ip: string): FirewallBrand {
   return brandMap[ip] ?? 'generic'
 }
 
-// ── Firewall rule derivation ───────────────────────────────────────
+// ── Rule derivation ───────────────────────────────────────────────
 function deriveRule(e: ReturnType<ReturnType<typeof getParser>>): string {
   const action   = (e.action ?? 'ALLOW').toUpperCase()
   const sanitize = (s: string) =>
@@ -42,9 +43,19 @@ function deriveRule(e: ReturnType<ReturnType<typeof getParser>>): string {
   return `${action}-${sanitize(e.protocol ?? 'ANY')}`
 }
 
+// ── Stats counter ─────────────────────────────────────────────────
+let msgReceived = 0
+let msgSaved    = 0
+let lastMsgAt: Date | null = null
+
+export function getAgentStats() {
+  return { msgReceived, msgSaved, lastMsgAt, dbSize: getDatabaseSize() }
+}
+
 // ── Message processor ─────────────────────────────────────────────
 async function processMessage(raw: string, sourceIp: string) {
-  incrementReceived()
+  msgReceived++
+  lastMsgAt = new Date()
 
   const syslogMsg = parseSyslogMessage(raw.trim(), sourceIp)
   if (!syslogMsg) return
@@ -54,84 +65,73 @@ async function processMessage(raw: string, sourceIp: string) {
   const event  = parser(syslogMsg)
   event.firewall_rule = deriveRule(event)
 
-  if (!isConfigured()) {
-    console.warn('[bcOS] Sin configuración — descartando mensaje de', sourceIp)
-    return
-  }
-
   try {
-    await forwardEvent(getConfig(), syslogMsg, event)
-    console.log(`[bcOS] ✓ ${brand} | ${sourceIp} | ${event.event_type} | ${event.severity}`)
+    saveEvent(syslogMsg, event, brand)
+    msgSaved++
+    if (event.severity === 'critical' || event.severity === 'high') {
+      console.log(`[bcOS] 🚨 ${brand} | ${sourceIp} | ${event.event_type} | ${event.severity}`)
+    }
   } catch (err) {
-    console.error(`[bcOS] Error enviando evento: ${(err as Error).message}`)
+    console.error(`[bcOS] Error guardando evento: ${(err as Error).message}`)
   }
 }
 
 // ── UDP Server ────────────────────────────────────────────────────
 function startUdpServer(port: number) {
   const server = dgram.createSocket('udp4')
-
   server.on('message', (msg, rinfo) => {
     processMessage(msg.toString(), rinfo.address).catch(err =>
       console.error('[bcOS] UDP error:', err)
     )
   })
-
-  server.on('error', err => {
-    console.error('[bcOS] UDP server error:', err.message)
-  })
-
-  server.bind(port, () => {
-    console.log(`[bcOS] UDP Syslog escuchando en :${port}`)
-  })
-
+  server.on('error', err => console.error('[bcOS] UDP server error:', err.message))
+  server.bind(port, () => console.log(`[bcOS] UDP Syslog :${port}`))
   return server
 }
 
 // ── TCP Server ────────────────────────────────────────────────────
 function startTcpServer(port: number) {
   const server = net.createServer(socket => {
-    const remoteIp = socket.remoteAddress?.replace('::ffff:', '') ?? 'unknown'
-    let buffer = ''
-
+    const ip = socket.remoteAddress?.replace('::ffff:', '') ?? 'unknown'
+    let buf = ''
     socket.on('data', chunk => {
-      buffer += chunk.toString()
-      const lines = buffer.split('\n')
-      buffer = lines.pop() ?? ''
-
+      buf += chunk.toString()
+      const lines = buf.split('\n')
+      buf = lines.pop() ?? ''
       for (const line of lines) {
-        if (line.trim()) {
-          processMessage(line, remoteIp).catch(err =>
-            console.error('[bcOS] TCP error:', err)
-          )
-        }
+        if (line.trim())
+          processMessage(line, ip).catch(err => console.error('[bcOS] TCP error:', err))
       }
     })
-
-    socket.on('error', err => {
-      console.error(`[bcOS] TCP socket error (${remoteIp}):`, err.message)
-    })
+    socket.on('error', err => console.error(`[bcOS] TCP socket (${ip}):`, err.message))
   })
-
-  server.listen(port, () => {
-    console.log(`[bcOS] TCP Syslog escuchando en :${port}`)
-  })
-
+  server.listen(port, () => console.log(`[bcOS] TCP Syslog :${port}`))
   return server
 }
 
+// ── Daily cleanup (retention) ─────────────────────────────────────
+function scheduleCleanup() {
+  const RETENTION_DAYS = parseInt(process.env.BCOS_RETENTION_DAYS ?? '365', 10)
+  // Run once at startup, then every 24h
+  cleanOldEvents(RETENTION_DAYS)
+  setInterval(() => cleanOldEvents(RETENTION_DAYS), 24 * 60 * 60_000)
+}
+
 // ── Main ──────────────────────────────────────────────────────────
-console.log('[bcOS] Iniciando agente...')
+console.log('[bcOS] Iniciando agente (almacenamiento local SQLite)...')
 
-const UDP_PORT = cfg.syslog_udp_port
-const TCP_PORT = cfg.syslog_tcp_port
-const WEB_PORT = cfg.web_port
+startUdpServer(cfg.syslog_udp_port)
+startTcpServer(cfg.syslog_tcp_port)
+startWebServer(cfg.web_port)
+scheduleCleanup()
 
-startUdpServer(UDP_PORT)
-startTcpServer(TCP_PORT)
-startWebServer(WEB_PORT)
+// Only sync to BCVision if configured
+if (isConfigured()) {
+  startSyncLoop(cfg)
+  console.log(`[bcOS] Sincronización con BCVision: ${cfg.bcvision_url}`)
+} else {
+  console.log('[bcOS] Sin configuración BCVision — modo standalone (solo almacenamiento local)')
+}
 
-process.on('SIGTERM', () => {
-  console.log('[bcOS] Shutting down...')
-  process.exit(0)
-})
+process.on('SIGTERM', () => { console.log('[bcOS] Shutting down...'); process.exit(0) })
+process.on('SIGINT',  () => { console.log('[bcOS] Shutting down...'); process.exit(0) })

@@ -1,7 +1,6 @@
 # ── Stage 1: Compile bcOS agent ────────────────────────────────────
 FROM node:20-alpine AS agent-build
 
-# Build tools needed for better-sqlite3 native addon
 RUN apk add --no-cache python3 make g++
 
 WORKDIR /app
@@ -12,7 +11,6 @@ COPY agent/src    ./src
 COPY agent/tsconfig.json ./
 RUN npx tsc
 
-# Prune to production deps only
 RUN npm prune --omit=dev
 
 # ── Stage 2: Build the ISO ─────────────────────────────────────────
@@ -30,7 +28,6 @@ RUN apk add --no-cache \
 
 WORKDIR /build
 
-# Download official Alpine Linux virt ISO
 ARG ALPINE_VER=3.19.1
 RUN echo "Descargando Alpine Linux ${ALPINE_VER}..." && \
     curl -fSL --retry 3 \
@@ -38,65 +35,64 @@ RUN echo "Descargando Alpine Linux ${ALPINE_VER}..." && \
     -o alpine.iso && \
     echo "ISO descargada: $(du -sh alpine.iso | cut -f1)"
 
-# Extract ISO contents
 RUN mkdir -p iso-work && \
     xorriso -osirrox on -indev alpine.iso -extract / iso-work/ 2>/dev/null; \
     ls iso-work/
 
-# ── Extraer el initramfs de Alpine ─────────────────────────────────
-# El initramfs ES el sistema de archivos completo en Alpine virt
-# Lo modificamos directamente en lugar de usar apkovl (que requiere medio escribible)
+# ── Extraer initramfs ──────────────────────────────────────────────
 RUN mkdir -p /initramfs-root && \
     cd /initramfs-root && \
     gunzip -c /build/iso-work/boot/initramfs-virt | cpio -idm 2>/dev/null && \
-    echo "Initramfs extraido: $(du -sh /initramfs-root | cut -f1)"
+    echo "Initramfs extraido: $(du -sh /initramfs-root | cut -f1)" && \
+    grep -n "switch_root" /initramfs-root/init 2>/dev/null | head -5 || echo "WARNING: no /init"
 
-# ── Inyectar bcOS agent en el initramfs ────────────────────────────
-
-# Node.js binary (musl/Alpine, compatible con el sistema)
+# ── Inyectar archivos del agente en el initramfs ───────────────────
 COPY --from=agent-build /usr/local/bin/node   /initramfs-root/usr/local/bin/node
-
-# Agente compilado
 RUN mkdir -p /initramfs-root/opt/bcos-agent
 COPY --from=agent-build /app/dist/            /initramfs-root/opt/bcos-agent/dist/
 COPY --from=agent-build /app/node_modules/    /initramfs-root/opt/bcos-agent/node_modules/
 COPY --from=agent-build /app/package.json     /initramfs-root/opt/bcos-agent/package.json
 COPY agent/ui/                                /initramfs-root/opt/bcos-agent/ui/
 
-# Configuracion por defecto (el usuario la llena via web UI)
 RUN mkdir -p /initramfs-root/etc/bcvision && \
     echo '{"syslog_udp_port":514,"syslog_tcp_port":514,"web_port":80,"agent_name":"bcOS-Agent","bcvision_url":"","bcvision_api_key":""}' \
-    > /initramfs-root/etc/bcvision/config.json && \
+        > /initramfs-root/etc/bcvision/config.json && \
     echo '{}' > /initramfs-root/etc/bcvision/brand-map.json
 
-# Directorio de datos SQLite
-RUN mkdir -p /initramfs-root/var/lib/bcvision && \
-    chmod 700 /initramfs-root/var/lib/bcvision
+RUN mkdir -p /initramfs-root/var/lib/bcvision && chmod 700 /initramfs-root/var/lib/bcvision
 
-# Servicio OpenRC
 COPY scripts/bcos-agent.initd /initramfs-root/etc/init.d/bcos-agent
-RUN chmod +x /initramfs-root/etc/init.d/bcos-agent && \
-    mkdir -p /initramfs-root/etc/runlevels/default && \
-    ln -sf /etc/init.d/bcos-agent /initramfs-root/etc/runlevels/default/bcos-agent
+RUN chmod +x /initramfs-root/etc/init.d/bcos-agent
 
-# Script de primer arranque
 RUN mkdir -p /initramfs-root/etc/local.d
 COPY scripts/bcos-firstboot.sh /initramfs-root/etc/local.d/00-bcos-firstboot.start
 RUN chmod +x /initramfs-root/etc/local.d/00-bcos-firstboot.start
 
-# Habilitar servicio local (ejecuta scripts en etc/local.d)
-RUN ln -sf /etc/init.d/local /initramfs-root/etc/runlevels/default/local 2>/dev/null || true
-
-# Issue file (mostrado en el prompt de login)
-RUN printf 'Welcome to bcOS — Syslog Agent\nWeb UI: http://<esta-IP>/\n' \
-    > /initramfs-root/etc/issue
-
-# Profile: muestra IP al hacer login
 RUN mkdir -p /initramfs-root/etc/profile.d && \
     printf '#!/bin/sh\necho ""\necho " bcOS Syslog Agent"\nip -4 addr show eth0 2>/dev/null | grep -oP "(?<=inet )[\d.]+" | while read ip; do\n  echo " Web UI: http://$ip/"\ndone\necho ""\n' \
-    > /initramfs-root/etc/profile.d/bcos.sh
+        > /initramfs-root/etc/profile.d/bcos.sh && \
+    printf 'Welcome to bcOS — Syslog Agent\nWeb UI: http://<esta-IP>/\n' \
+        > /initramfs-root/etc/issue
 
-# ── Reempacar el initramfs modificado ──────────────────────────────
+# ── Parchear /init para copiar archivos a sysroot antes del switch_root ──
+# Alpine hace switch_root a un tmpfs limpio — necesitamos copiar nuestros
+# archivos al nuevo root ANTES del pivot (por eso usamos un script externo
+# en lugar de heredoc para evitar errores de parseo del Dockerfile).
+COPY scripts/bcos-inject.sh /tmp/bcos-inject.sh
+RUN INIT=/initramfs-root/init && \
+    if [ ! -f "$INIT" ]; then echo "ERROR: /init no encontrado"; exit 1; fi && \
+    LINE=$(grep -n "exec switch_root" "$INIT" | tail -1 | cut -d: -f1) && \
+    if [ -z "$LINE" ]; then echo "ERROR: switch_root no encontrado en /init"; exit 1; fi && \
+    echo "Parcheando /init en linea $LINE ..." && \
+    head -n $((LINE - 1)) "$INIT" > /tmp/init.new && \
+    cat /tmp/bcos-inject.sh >> /tmp/init.new && \
+    tail -n +"$LINE" "$INIT" >> /tmp/init.new && \
+    mv /tmp/init.new "$INIT" && \
+    chmod +x "$INIT" && \
+    echo "=== Patch aplicado ===" && \
+    grep -n "bcOS\|switch_root" "$INIT" | tail -8
+
+# ── Reempacar initramfs ────────────────────────────────────────────
 RUN cd /initramfs-root && \
     find . | cpio -H newc -o 2>/dev/null | gzip > /build/iso-work/boot/initramfs-virt && \
     echo "Nuevo initramfs: $(du -sh /build/iso-work/boot/initramfs-virt | cut -f1)"

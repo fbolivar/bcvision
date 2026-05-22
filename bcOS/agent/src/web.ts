@@ -49,18 +49,19 @@ export function startWebServer(port: number) {
 
     // ── Status ─────────────────────────────────────────────────
     if (url === '/api/status' && method === 'GET') {
-      const cfg = getConfig()
-      const fwd = getForwarderStats()
+      const cfg  = getConfig()
+      const ag   = getAgentStats()
+      const fwd  = getForwarderStats()
       return json(res, 200, {
         configured:   isConfigured(),
         agent_name:   cfg.agent_name,
         bcvision_url: cfg.bcvision_url,
         db_size:      getDatabaseSize(),
         stats: {
-          messages_received:  fwd.messagesReceived,
+          messages_received:  ag.msgReceived,
           messages_forwarded: fwd.messagesForwarded,
           messages_failed:    fwd.messagesFailed,
-          last_message:       fwd.lastMessage?.toISOString() ?? null,
+          last_message:       ag.lastMsgAt?.toISOString() ?? null,
           connected:          fwd.connected,
           last_error:         fwd.lastError,
           started_at:         fwd.startedAt.toISOString(),

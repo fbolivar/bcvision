@@ -15,7 +15,7 @@ fi
 # ── Estamos en modo live (tmpfs) — ejecutar instalador ────────────
 echo ""
 echo "╔════════════════════════════════════════════════════╗"
-echo "║   bcOS — Instalador Automático v1.5               ║"
+echo "║   bcOS — Instalador Automático v1.7               ║"
 echo "║   Instalando Alpine + bcOS Agent en disco...       ║"
 echo "╚════════════════════════════════════════════════════╝"
 echo ""
@@ -120,10 +120,25 @@ mkdir -p /mnt/opt/bcos-agent \
          /mnt/etc/profile.d
 
 cp -a /opt/bcos-agent/. /mnt/opt/bcos-agent/
-cp /usr/local/bin/node /mnt/usr/local/bin/node
 cp /etc/bcvision/config.json /mnt/etc/bcvision/
 cp /etc/bcvision/brand-map.json /mnt/etc/bcvision/
 chmod 700 /mnt/var/lib/bcvision
+
+# ── Instalar Node.js via apk en el sistema instalado ─────────────
+# Montar filesystems necesarios para apk en chroot
+mount -t proc proc /mnt/proc 2>/dev/null || true
+mount -t sysfs sysfs /mnt/sys 2>/dev/null || true
+mount --bind /dev /mnt/dev 2>/dev/null || true
+
+echo "[bcOS] Instalando Node.js en disco (con todas sus dependencias)..."
+chroot /mnt apk add --no-cache nodejs || {
+    echo "[bcOS] ADVERTENCIA: apk add nodejs fallo. Copiando binario como fallback..."
+    cp /usr/local/bin/node /mnt/usr/local/bin/node || true
+}
+
+umount /mnt/dev 2>/dev/null || true
+umount /mnt/sys 2>/dev/null || true
+umount /mnt/proc 2>/dev/null || true
 
 # Servicio OpenRC
 cp /etc/init.d/bcos-agent /mnt/etc/init.d/bcos-agent

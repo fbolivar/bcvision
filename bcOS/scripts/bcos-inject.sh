@@ -11,7 +11,6 @@ if [ -d /opt/bcos-agent ]; then
            "$_t/etc/local.d" "$_t/etc/profile.d" \
            "$_t/var/lib/bcvision"
   cp -a /opt/bcos-agent "$_t/opt/"
-  cp /usr/local/bin/node "$_t/usr/local/bin/"
   cp /etc/bcvision/config.json "$_t/etc/bcvision/"
   cp /etc/bcvision/brand-map.json "$_t/etc/bcvision/"
   cp /etc/init.d/bcos-agent "$_t/etc/init.d/"

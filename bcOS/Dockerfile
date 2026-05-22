@@ -47,7 +47,6 @@ RUN mkdir -p /initramfs-root && \
     grep -n "switch_root" /initramfs-root/init 2>/dev/null | head -5 || echo "WARNING: no /init"
 
 # ── Inyectar archivos del agente en el initramfs ───────────────────
-COPY --from=agent-build /usr/local/bin/node   /initramfs-root/usr/local/bin/node
 RUN mkdir -p /initramfs-root/opt/bcos-agent
 COPY --from=agent-build /app/dist/            /initramfs-root/opt/bcos-agent/dist/
 COPY --from=agent-build /app/node_modules/    /initramfs-root/opt/bcos-agent/node_modules/

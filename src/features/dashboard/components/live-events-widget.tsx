@@ -3,7 +3,9 @@
 import { useEventsStore } from '@/features/dashboard/store/events.store'
 import { useRealtimeEvents } from '@/features/dashboard/hooks/use-realtime-events'
 import { formatRelativeTime } from '@/shared/lib/utils'
-import { Zap, Radio } from 'lucide-react'
+import { Zap, Radio, ArrowRight } from 'lucide-react'
+
+const MAX_VISIBLE = 5
 
 const sevColor: Record<string, { dot: string; badge: string }> = {
   critical: { dot: '#ef4444', badge: 'text-[#f87171] bg-[#ef4444]/10' },
@@ -54,35 +56,48 @@ export function LiveEventsWidget({ orgId }: { orgId: string }) {
             <p className="text-xs text-[#1e3a5f] mt-1">Los nuevos logs Syslog aparecerán aquí</p>
           </div>
         ) : (
-          <div className="divide-y divide-[#0a1628]">
-            {events.map((event, i) => {
-              const sc = sevColor[event.severity] ?? sevColor.info
-              return (
-                <div key={event.id}
-                  className="px-4 py-2.5 hover:bg-[#0d1a2e]/80 transition-colors animate-fade-in"
-                  style={{ animationDelay: `${i * 0.02}s` }}>
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-1.5 mb-1">
-                        <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: sc.dot, boxShadow: `0 0 4px ${sc.dot}` }} />
-                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${sc.badge}`}>{event.severity}</span>
-                        <span className="text-[10px] text-[#475569] capitalize">{event.event_type}</span>
+          <>
+            <div className="divide-y divide-[#0a1628]">
+              {events.slice(0, MAX_VISIBLE).map((event, i) => {
+                const sc = sevColor[event.severity] ?? sevColor.info
+                return (
+                  <div key={event.id}
+                    className="px-4 py-2.5 hover:bg-[#0d1a2e]/80 transition-colors animate-fade-in"
+                    style={{ animationDelay: `${i * 0.02}s` }}>
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: sc.dot, boxShadow: `0 0 4px ${sc.dot}` }} />
+                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${sc.badge}`}>{event.severity}</span>
+                          <span className="text-[10px] text-[#475569] capitalize">{event.event_type}</span>
+                        </div>
+                        <p className="text-[10px] text-[#334155] font-mono truncate">
+                          {event.src_ip ?? '—'} → {event.dst_ip ?? '—'}
+                        </p>
+                        {event.threat_name && (
+                          <p className="text-[10px] text-[#f87171] mt-0.5 truncate">{event.threat_name}</p>
+                        )}
                       </div>
-                      <p className="text-[10px] text-[#334155] font-mono truncate">
-                        {event.src_ip ?? '—'} → {event.dst_ip ?? '—'}
-                      </p>
-                      {event.threat_name && (
-                        <p className="text-[10px] text-[#f87171] mt-0.5 truncate">{event.threat_name}</p>
-                      )}
+                      <span className="text-[9px] text-[#1e3a5f] whitespace-nowrap shrink-0 mt-0.5">
+                        {formatRelativeTime(event.event_time)}
+                      </span>
                     </div>
-                    <span className="text-[9px] text-[#1e3a5f] whitespace-nowrap shrink-0 mt-0.5">
-                      {formatRelativeTime(event.event_time)}
-                    </span>
                   </div>
-                </div>
-              )
-            })}
-          </div>
+                )
+              })}
+            </div>
+            {events.length > MAX_VISIBLE && (
+              <a href="/traffic"
+                className="flex items-center justify-between px-4 py-2.5 border-t border-[#0a1628] hover:bg-[#0d1a2e]/60 transition-colors group">
+                <span className="text-[10px] text-[#334155]">
+                  +{events.length - MAX_VISIBLE} eventos más
+                </span>
+                <span className="flex items-center gap-1 text-[10px] text-[#3b82f6] group-hover:text-[#60a5fa] transition-colors font-medium">
+                  Ver todos <ArrowRight className="w-3 h-3" />
+                </span>
+              </a>
+            )}
+          </>
         )}
       </div>
     </div>

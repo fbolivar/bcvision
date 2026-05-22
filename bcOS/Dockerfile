@@ -3,14 +3,14 @@ FROM node:20-alpine AS agent-build
 
 WORKDIR /app
 COPY agent/package*.json ./
-RUN npm ci
+RUN npm install --ignore-scripts && npm rebuild
 
 COPY agent/src    ./src
 COPY agent/tsconfig.json ./
 RUN npx tsc
 
 # Prune to production deps only
-RUN npm ci --omit=dev
+RUN npm prune --omit=dev && npm rebuild
 
 # ── Stage 2: Build the ISO ─────────────────────────────────────────
 FROM alpine:3.19 AS iso-builder

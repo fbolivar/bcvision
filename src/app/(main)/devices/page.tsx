@@ -34,8 +34,7 @@ export default async function DevicesPage({ searchParams }: PageProps) {
 
   const { data: devicesData } = await supabase
     .from('devices').select('*').eq('org_id', orgId)
-    .gte('last_seen', since)
-    .order('last_seen', { ascending: false })
+    .order('last_seen', { ascending: false, nullsFirst: false })
   const devices = (devicesData ?? []) as Device[]
 
   return (

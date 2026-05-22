@@ -4,6 +4,7 @@ import * as path from 'path'
 
 import { getConfig, saveConfig, isConfigured } from './config'
 import { getAgentStats }                        from './index'
+import { getStats as getForwarderStats }        from './forwarder'
 import {
   queryEvents, countEvents,
   getHourlyStats, getTopSources,
@@ -48,17 +49,21 @@ export function startWebServer(port: number) {
 
     // ── Status ─────────────────────────────────────────────────
     if (url === '/api/status' && method === 'GET') {
-      const cfg   = getConfig()
-      const stats = getAgentStats()
+      const cfg = getConfig()
+      const fwd = getForwarderStats()
       return json(res, 200, {
         configured:   isConfigured(),
         agent_name:   cfg.agent_name,
         bcvision_url: cfg.bcvision_url,
         db_size:      getDatabaseSize(),
         stats: {
-          messages_received: stats.msgReceived,
-          messages_saved:    stats.msgSaved,
-          last_message:      stats.lastMsgAt?.toISOString() ?? null,
+          messages_received:  fwd.messagesReceived,
+          messages_forwarded: fwd.messagesForwarded,
+          messages_failed:    fwd.messagesFailed,
+          last_message:       fwd.lastMessage?.toISOString() ?? null,
+          connected:          fwd.connected,
+          last_error:         fwd.lastError,
+          started_at:         fwd.startedAt.toISOString(),
         },
       })
     }

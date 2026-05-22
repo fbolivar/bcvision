@@ -64,7 +64,7 @@ export async function getVpnUsers(orgId: string, hours = 24): Promise<VpnUser[]>
 
   const map = new Map<string, VpnUser>()
   for (const row of data ?? []) {
-    const key = row.user_name ?? row.src_ip ?? 'unknown'
+    const key = row.user_name ?? row.src_ip ?? 'Desconocido'
     const existing = map.get(key)
     const bytes = (row.bytes_sent ?? 0) + (row.bytes_received ?? 0)
     const failed = (row.action === 'deny' || row.action === 'drop') ? 1 : 0

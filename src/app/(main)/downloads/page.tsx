@@ -35,7 +35,7 @@ export default async function DownloadsPage() {
             <div className="flex items-center gap-2 mb-1">
               <h2 className="text-lg font-bold text-white">bcOS — Syslog Agent</h2>
               <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#3b82f6]/10 text-[#3b82f6] border border-[#3b82f6]/20">
-                v1.0.0
+                v1.7.0
               </span>
             </div>
             <p className="text-sm text-[#64748b] mb-4">

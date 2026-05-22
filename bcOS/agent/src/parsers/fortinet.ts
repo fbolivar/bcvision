@@ -89,7 +89,7 @@ export function parsefortinet(msg: SyslogMessage): ParsedFirewallEvent {
     url: (kv['url'] && kv['url'] !== '/') ? kv['url'] : (kv['hostname'] ?? null),
     application: kv['app'] ?? kv['appcat'] ?? null,
     threat_name: kv['attack'] ?? kv['virus'] ?? kv['botnet'] ?? null,
-    threat_category: kv['attackid'] ? 'intrusion' : kv['virus'] ? 'malware' : null,
+    threat_category: kv['botnet'] ? 'botnet' : kv['attackid'] ? 'intrusion' : kv['virus'] ? 'malware' : null,
     severity: isRealThreat ? 'high' : mapSeverity(kv['level']),
     parsed_data: kv,
   }

@@ -76,19 +76,27 @@ export async function getThreatCategories(orgId: string, hours = 24): Promise<Th
     .gte('event_time', since)
     .not('threat_category', 'is', null)
 
-  const map = new Map<string, ThreatCategoryCount>()
+  const map      = new Map<string, ThreatCategoryCount>()
+  const catUsers = new Map<string, Set<string>>()
+
   for (const row of data ?? []) {
     const cat = row.threat_category ?? 'unknown'
-    const existing = map.get(cat)
     const blocked = (row.action === 'deny' || row.action === 'drop') ? 1 : 0
-    const user = row.user_name ? 1 : 0
+    const existing = map.get(cat)
     if (existing) {
       existing.total++
       existing.blocked += blocked
-      existing.users_affected += user
     } else {
-      map.set(cat, { category: cat, total: 1, blocked, users_affected: user })
+      map.set(cat, { category: cat, total: 1, blocked, users_affected: 0 })
     }
+    if (row.user_name) {
+      if (!catUsers.has(cat)) catUsers.set(cat, new Set())
+      catUsers.get(cat)!.add(row.user_name)
+    }
+  }
+
+  for (const [cat, stat] of map) {
+    stat.users_affected = catUsers.get(cat)?.size ?? 0
   }
 
   return Array.from(map.values()).sort((a, b) => b.total - a.total).slice(0, 20)
@@ -142,6 +150,7 @@ export async function getGeoAttacks(orgId: string, hours = 24): Promise<GeoAttac
     .gte('event_time', since)
     .not('threat_category', 'is', null)
     .not('src_country', 'is', null)
+    .neq('src_country', 'Red interna')
 
   const map = new Map<string, GeoAttack>()
   for (const row of data ?? []) {

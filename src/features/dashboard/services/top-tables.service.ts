@@ -36,7 +36,7 @@ export async function getUrlCategoryTable(orgId: string, hours = 24): Promise<Ur
     .select('event_type, threat_category, bytes_sent, bytes_received, user_name')
     .eq('org_id', orgId)
     .gte('event_time', since)
-    .limit(5000)
+    .limit(10000)
 
   const map = new Map<string, { traffic: number; sessions: number; users: Set<string> }>()
 

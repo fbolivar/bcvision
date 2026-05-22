@@ -33,7 +33,9 @@ export async function getTopApplications(orgId: string, hours = 24, limit = 20):
     .gte('event_time', since)
     .not('application', 'is', null)
 
-  const map = new Map<string, AppStat>()
+  const map     = new Map<string, AppStat>()
+  const appUsers = new Map<string, Set<string>>()
+
   for (const row of data ?? []) {
     const app = row.application ?? 'unknown'
     const bytes = (row.bytes_sent ?? 0) + (row.bytes_received ?? 0)
@@ -43,10 +45,17 @@ export async function getTopApplications(orgId: string, hours = 24, limit = 20):
       existing.session_count++
       existing.bytes_total += bytes
       existing.blocked_count += blocked
-      if (row.user_name) existing.user_count++
     } else {
-      map.set(app, { application: app, session_count: 1, bytes_total: bytes, blocked_count: blocked, user_count: row.user_name ? 1 : 0 })
+      map.set(app, { application: app, session_count: 1, bytes_total: bytes, blocked_count: blocked, user_count: 0 })
     }
+    if (row.user_name) {
+      if (!appUsers.has(app)) appUsers.set(app, new Set())
+      appUsers.get(app)!.add(row.user_name)
+    }
+  }
+
+  for (const [app, stat] of map) {
+    stat.user_count = appUsers.get(app)?.size ?? 0
   }
 
   return Array.from(map.values())
@@ -93,6 +102,7 @@ export async function getTopProxyUsers(orgId: string, hours = 24): Promise<Proxy
     .from('firewall_events')
     .select('user_name, bytes_sent, bytes_received, action')
     .eq('org_id', orgId)
+    .eq('event_type', 'traffic')
     .gte('event_time', since)
     .not('user_name', 'is', null)
     .not('application', 'is', null)

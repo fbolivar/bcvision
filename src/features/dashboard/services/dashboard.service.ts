@@ -5,11 +5,17 @@ export async function getDashboardStats(orgId: string, hours = 24): Promise<Dash
   const supabase = await createClient()
   const since = new Date(Date.now() - hours * 3600_000).toISOString()
 
-  const [eventsRes, threatsRes, devicesRes, alertsRes, bytesRes] = await Promise.all([
+  const [eventsRes, blockedRes, threatsRes, devicesRes, alertsRes, bytesRes] = await Promise.all([
     supabase
       .from('firewall_events')
-      .select('id, action', { count: 'exact', head: false })
+      .select('id', { count: 'exact', head: true })
       .eq('org_id', orgId)
+      .gte('event_time', since),
+    supabase
+      .from('firewall_events')
+      .select('id', { count: 'exact', head: true })
+      .eq('org_id', orgId)
+      .in('action', ['deny', 'drop'])
       .gte('event_time', since),
     supabase
       .from('firewall_events')
@@ -32,18 +38,17 @@ export async function getDashboardStats(orgId: string, hours = 24): Promise<Dash
       .from('firewall_events')
       .select('bytes_sent, bytes_received')
       .eq('org_id', orgId)
-      .gte('event_time', since),
+      .gte('event_time', since)
+      .limit(5000),
   ])
 
-  const events  = eventsRes.data ?? []
-  const blocked = events.filter(e => e.action === 'deny' || e.action === 'drop').length
   const bytesTotal = (bytesRes.data ?? []).reduce(
     (acc, e) => acc + (e.bytes_sent ?? 0) + (e.bytes_received ?? 0), 0
   )
 
   return {
     total_events_24h:    eventsRes.count ?? 0,
-    blocked_events_24h:  blocked,
+    blocked_events_24h:  blockedRes.count ?? 0,
     threats_24h:         threatsRes.count ?? 0,
     active_devices:      devicesRes.count ?? 0,
     critical_alerts:     alertsRes.count ?? 0,

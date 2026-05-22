@@ -51,16 +51,19 @@ function aggregate(rows: Record<string, unknown>[], field: string, labelMap?: Re
 }
 
 export async function getAppTrafficChart(orgId: string, hours = 24): Promise<ChartSegment[]> {
-  const rows = await fetchField(orgId, 'dst_port', hours)
-  const portCounts: Record<string, number> = {}
+  const rows = await fetchField(orgId, 'application,dst_port', hours)
+  const counts: Record<string, number> = {}
   for (const row of rows) {
+    const app  = row['application']
     const port = row['dst_port']
-    const label = port !== null && port !== undefined
-      ? (PORT_NAMES[Number(port)] ?? `Puerto ${port}`)
-      : 'N/A'
-    portCounts[label] = (portCounts[label] ?? 0) + 1
+    const label = app
+      ? String(app)
+      : port !== null && port !== undefined
+        ? (PORT_NAMES[Number(port)] ?? `Puerto ${port}`)
+        : 'Desconocido'
+    counts[label] = (counts[label] ?? 0) + 1
   }
-  return Object.entries(portCounts)
+  return Object.entries(counts)
     .sort((a, b) => b[1] - a[1])
     .slice(0, 6)
     .map(([label, value], i) => ({ label, value, color: COLORS_A[i] ?? '#64748b' }))

@@ -38,12 +38,14 @@ export async function getVpnStats(orgId: string, hours = 24): Promise<VpnStats> 
     .gte('event_time', since)
 
   const rows = data ?? []
-  const uniqueUsers = new Set(rows.map(r => r.user_name).filter(Boolean))
+  // Usuarios activos = solo sesiones exitosas (tunnel-up/allow/monitor), no intentos fallidos
+  const successRows = rows.filter(r => r.action !== 'deny' && r.action !== 'drop')
+  const uniqueUsers = new Set(successRows.map(r => r.user_name).filter(Boolean))
   const failedLogins = rows.filter(r => r.action === 'deny' || r.action === 'drop').length
   const bytesTotal = rows.reduce((s, r) => s + (r.bytes_sent ?? 0) + (r.bytes_received ?? 0), 0)
 
   return {
-    total_sessions: rows.length,
+    total_sessions: successRows.length,
     active_users: uniqueUsers.size,
     failed_logins: failedLogins,
     bytes_total: bytesTotal,
@@ -63,7 +65,7 @@ export async function getVpnUsers(orgId: string, hours = 24): Promise<VpnUser[]>
     .order('event_time', { ascending: false })
 
   const map = new Map<string, VpnUser>()
-  for (const row of data ?? []) {
+  for (const row of (data ?? []).filter(r => r.action !== 'deny' && r.action !== 'drop')) {
     const key = row.user_name ?? row.src_ip ?? 'Desconocido'
     const existing = map.get(key)
     const bytes = (row.bytes_sent ?? 0) + (row.bytes_received ?? 0)

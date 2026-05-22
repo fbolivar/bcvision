@@ -66,9 +66,10 @@ export function parsefortinet(msg: SyslogMessage): ParsedFirewallEvent {
 
   const srcCountry = kv['srccountry']
   const dstCountry = kv['dstcountry']
-  // Para VPN, el usuario "N/A" significa sin autenticar — lo tratamos como null
+  // Para VPN, el usuario "N/A" o una IP (tunnelip) no es un usuario real
   const rawUser = kv['user'] ?? kv['unauthuser'] ?? null
-  const userName = (rawUser === 'N/A' || rawUser === 'n/a' || rawUser === '') ? null : rawUser
+  const isIpLike = rawUser ? /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(rawUser) : false
+  const userName = (!rawUser || rawUser === 'N/A' || rawUser === 'n/a' || rawUser === '' || isIpLike) ? null : rawUser
 
   return {
     event_type: mapEventType(kv['type'] ?? '', subtype),

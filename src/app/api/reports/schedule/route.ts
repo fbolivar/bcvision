@@ -34,8 +34,8 @@ export async function POST(req: NextRequest) {
       created_by:   user.id,
       report_type,
       frequency,
-      email,
-      include_pdf,
+      recipients:   [email],
+      attach_pdf:   include_pdf,
       active:       true,
     })
     .select()

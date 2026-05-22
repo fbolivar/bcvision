@@ -52,6 +52,11 @@ export async function GET(req: Request) {
       const title       = `Reporte ${typeLabel} — ${periodStart} al ${periodEnd}`
 
       // Guardar reporte en DB
+      const recipients = Array.isArray(sched.recipients) && sched.recipients.length > 0
+        ? sched.recipients as string[]
+        : null
+      if (!recipients) continue
+
       const { data: reportRecord } = await admin.from('reports').insert({
         org_id:       sched.org_id,
         type:         sched.report_type,
@@ -61,13 +66,13 @@ export async function GET(req: Request) {
         status:       'ready',
         content_json: { metrics, generated_at: now.toISOString() },
         generated_at: now.toISOString(),
-        sent_to:      [sched.email],
+        sent_to:      recipients,
       }).select('id').single()
 
       const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://bcvision.app'
 
       await sendMail({
-        to:      sched.email,
+        to:      recipients,
         subject: `Reporte ${typeLabel} — ${orgName} · ${periodStart} al ${periodEnd}`,
         html:    reportEmailHtml({
           orgName, reportTitle: title, reportType: sched.report_type,

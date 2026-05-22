@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createAdminClient } from '@/lib/supabase/server'
+import { sendAlertEmail } from '@/app/api/alerts/route'
 
 const AlertSchema = z.object({
   queue_id:    z.number(),
@@ -75,6 +76,20 @@ export async function POST(req: NextRequest) {
 
     const { error } = await supabase.from('firewall_events').insert(rows)
     if (error) console.error('[agent/alerts] insert error:', error.message)
+
+    // Enviar email para alertas críticas/high si la org tiene email habilitado
+    const criticalAlerts = alerts.filter(a => a.severity === 'critical' || a.severity === 'high')
+    if (criticalAlerts.length > 0) {
+      const topAlert = criticalAlerts[0]
+      sendAlertEmail(supabase, keyRecord.org_id, {
+        title:       topAlert.threat_name ?? `${topAlert.event_type} desde ${topAlert.source_ip}`,
+        severity:    topAlert.severity,
+        description: criticalAlerts.length > 1
+          ? `${criticalAlerts.length} alertas detectadas. Más grave: ${topAlert.threat_name ?? topAlert.firewall_rule ?? topAlert.event_type}`
+          : topAlert.firewall_rule ?? null,
+        created_at:  topAlert.event_time,
+      }).catch(err => console.error('[agent/alerts] email error:', err))
+    }
   }
 
   await supabase

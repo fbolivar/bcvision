@@ -1,6 +1,6 @@
 'use client'
 
-import { Building2, Server, Clock, CreditCard, Upload, Trash2, Palette, Tag, Loader2, CheckCircle } from 'lucide-react'
+import { Building2, Server, Clock, CreditCard, Upload, Trash2, Palette, Tag, Loader2, CheckCircle, Bell, Plus, X } from 'lucide-react'
 import { useEffect, useRef, useState, useCallback } from 'react'
 import Image from 'next/image'
 
@@ -253,6 +253,119 @@ function BrandingSection({ orgId }: { orgId: string }) {
   )
 }
 
+// ─── Alert Email Section ──────────────────────────────────────
+function AlertEmailSection() {
+  const [enabled,    setEnabled]    = useState(false)
+  const [recipients, setRecipients] = useState<string[]>([])
+  const [input,      setInput]      = useState('')
+  const [loading,    setLoading]    = useState(true)
+  const [saving,     setSaving]     = useState(false)
+  const [saved,      setSaved]      = useState(false)
+  const [err,        setErr]        = useState('')
+
+  useEffect(() => {
+    fetch('/api/org-settings').then(r => r.json()).then(d => {
+      setEnabled(d.alert_email_enabled ?? false)
+      setRecipients(d.alert_email_recipients ?? [])
+      setLoading(false)
+    })
+  }, [])
+
+  function addEmail() {
+    const email = input.trim().toLowerCase()
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return
+    if (recipients.includes(email)) { setInput(''); return }
+    setRecipients(r => [...r, email])
+    setInput('')
+  }
+
+  async function save() {
+    setSaving(true); setErr(''); setSaved(false)
+    const res = await fetch('/api/org-settings', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ alert_email_enabled: enabled, alert_email_recipients: recipients }),
+    })
+    const json = await res.json()
+    if (!res.ok) setErr(json.error ?? 'Error guardando')
+    else setSaved(true)
+    setSaving(false)
+    setTimeout(() => setSaved(false), 3000)
+  }
+
+  if (loading) return (
+    <div className="glass rounded-2xl p-5 flex items-center justify-center h-20">
+      <Loader2 className="w-5 h-5 animate-spin text-[#475569]" />
+    </div>
+  )
+
+  return (
+    <div className="glass rounded-2xl p-5 space-y-4">
+      <div className="flex items-center gap-2">
+        <Bell className="w-4 h-4 text-[#f97316]" />
+        <h3 className="text-sm font-semibold text-white">Notificaciones por Email</h3>
+        <span className="text-[10px] text-[#f97316] bg-[#f97316]/10 border border-[#f97316]/20 px-2 py-0.5 rounded-full font-semibold ml-1">
+          Alertas críticas · Amenazas altas
+        </span>
+      </div>
+
+      {/* Toggle */}
+      <div className="flex items-center justify-between py-2 border-b border-[#0f2038]">
+        <div>
+          <p className="text-sm text-white font-medium">Activar notificaciones</p>
+          <p className="text-xs text-[#475569] mt-0.5">Recibe un email cada vez que se detecte una amenaza crítica o alta</p>
+        </div>
+        <button
+          onClick={() => setEnabled(v => !v)}
+          className={`relative w-11 h-6 rounded-full transition-colors ${enabled ? 'bg-[#f97316]' : 'bg-[#1e3a5f]'}`}
+        >
+          <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${enabled ? 'translate-x-5' : ''}`} />
+        </button>
+      </div>
+
+      {/* Recipients */}
+      <div>
+        <label className="text-xs text-[#9ca3af] mb-2 block">Destinatarios</label>
+        <div className="flex gap-2 mb-2">
+          <input
+            type="email"
+            placeholder="email@empresa.com"
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && addEmail()}
+            className="flex-1 bg-[#060a12]/80 border border-[#1e3a5f] text-white placeholder:text-[#334155] rounded-xl px-3 py-2 text-sm outline-none focus:border-[#f97316] transition-colors"
+          />
+          <button onClick={addEmail} className="px-3 py-2 bg-[#f97316]/15 border border-[#f97316]/30 text-[#f97316] rounded-xl hover:bg-[#f97316]/25 transition-colors">
+            <Plus className="w-4 h-4" />
+          </button>
+        </div>
+        {recipients.length > 0 ? (
+          <div className="flex flex-wrap gap-2">
+            {recipients.map(email => (
+              <span key={email} className="flex items-center gap-1.5 text-xs bg-[#0f2038] border border-[#1e3a5f] text-[#94a3b8] px-2.5 py-1 rounded-lg">
+                {email}
+                <button onClick={() => setRecipients(r => r.filter(e => e !== email))} className="text-[#475569] hover:text-[#f87171] transition-colors">
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            ))}
+          </div>
+        ) : (
+          <p className="text-xs text-[#334155]">No hay destinatarios configurados</p>
+        )}
+      </div>
+
+      {err && <p className="text-[#f87171] text-xs">{err}</p>}
+
+      <button onClick={save} disabled={saving}
+        className="flex items-center gap-2 px-5 py-2.5 bg-[#f97316] hover:bg-[#ea6c0a] disabled:opacity-50 text-white font-semibold rounded-xl text-sm transition-all">
+        {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : saved ? <CheckCircle className="w-4 h-4" /> : null}
+        {saving ? 'Guardando...' : saved ? 'Guardado' : 'Guardar notificaciones'}
+      </button>
+    </div>
+  )
+}
+
 // ─── Main component ───────────────────────────────────────────
 export function OrgTab({ org, isAdmin }: Props) {
   if (!org) {
@@ -304,6 +417,9 @@ export function OrgTab({ org, isAdmin }: Props) {
 
       {/* Branding — solo admins */}
       {isAdmin && <BrandingSection orgId={org.id} />}
+
+      {/* Notificaciones por email — solo admins */}
+      {isAdmin && <AlertEmailSection />}
 
       {/* Syslog config */}
       <div className="glass rounded-2xl p-5">

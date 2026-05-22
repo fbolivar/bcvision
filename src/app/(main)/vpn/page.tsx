@@ -12,7 +12,7 @@ interface PageProps { searchParams: Promise<Record<string, string>> }
 
 export default async function VpnPage({ searchParams }: PageProps) {
   const sp = await searchParams
-  const { hours, isLive, param, label } = resolveHours(sp['hours'])
+  const { hours, isLive, param, label } = resolveHours(sp['hours'], 24)
 
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()

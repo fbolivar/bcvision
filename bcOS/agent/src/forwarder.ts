@@ -46,8 +46,9 @@ export async function forwardEvent(
     const res = await fetch(`${cfg.bcvision_url}/api/agent/ingest`, {
       method:  'POST',
       headers: {
-        'Content-Type':  'application/json',
-        'Authorization': `Bearer ${cfg.bcvision_api_key}`,
+        'Content-Type':    'application/json',
+        'Authorization':   `Bearer ${cfg.bcvision_api_key}`,
+        'Accept-Encoding': 'identity',
       },
       body: JSON.stringify(payload),
       signal: AbortSignal.timeout(8_000),
@@ -58,6 +59,7 @@ export async function forwardEvent(
       throw new Error(`HTTP ${res.status}: ${body}`)
     }
 
+    await res.body?.cancel().catch(() => {})
     stats.messagesForwarded++
     stats.connected  = true
     stats.lastError  = null
@@ -65,6 +67,6 @@ export async function forwardEvent(
     stats.messagesFailed++
     stats.connected  = false
     stats.lastError  = (err as Error).message
-    throw err
+    // no re-throw — errores de red no deben crashear el proceso
   }
 }

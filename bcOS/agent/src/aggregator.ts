@@ -13,8 +13,9 @@ export async function syncAlerts(cfg: AgentConfig): Promise<void> {
     const res = await fetch(`${cfg.bcvision_url}/api/agent/alerts`, {
       method:  'POST',
       headers: {
-        'Content-Type':  'application/json',
-        'Authorization': `Bearer ${cfg.bcvision_api_key}`,
+        'Content-Type':    'application/json',
+        'Authorization':   `Bearer ${cfg.bcvision_api_key}`,
+        'Accept-Encoding': 'identity',
       },
       body: JSON.stringify({ alerts, agent_name: cfg.agent_name }),
       signal: AbortSignal.timeout(10_000),
@@ -39,8 +40,9 @@ export async function syncStats(cfg: AgentConfig): Promise<void> {
     const res = await fetch(`${cfg.bcvision_url}/api/agent/stats`, {
       method:  'POST',
       headers: {
-        'Content-Type':  'application/json',
-        'Authorization': `Bearer ${cfg.bcvision_api_key}`,
+        'Content-Type':    'application/json',
+        'Authorization':   `Bearer ${cfg.bcvision_api_key}`,
+        'Accept-Encoding': 'identity',
       },
       body: JSON.stringify({ stats, agent_name: cfg.agent_name }),
       signal: AbortSignal.timeout(10_000),

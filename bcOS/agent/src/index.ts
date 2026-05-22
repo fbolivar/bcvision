@@ -142,3 +142,7 @@ if (isConfigured()) {
 
 process.on('SIGTERM', () => { console.log('[bcOS] Shutting down...'); process.exit(0) })
 process.on('SIGINT',  () => { console.log('[bcOS] Shutting down...'); process.exit(0) })
+
+// Evitar que errores de red/stream no capturados derriben el proceso
+process.on('uncaughtException',   err => console.error('[bcOS] uncaughtException:', err.message))
+process.on('unhandledRejection',  err => console.error('[bcOS] unhandledRejection:', err))

@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import { Download, Server, Monitor, Terminal, Shield, ChevronRight } from 'lucide-react'
+import { Download, Server, Monitor, Terminal, Shield, ChevronRight, Package, Clock, ExternalLink } from 'lucide-react'
 
 export const metadata = { title: 'Descargas — BCVision' }
 
@@ -13,7 +13,7 @@ export default async function DownloadsPage() {
     <div className="p-6 lg:p-8 max-w-4xl mx-auto">
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-white">Descargas</h1>
-        <p className="text-[#64748b] text-sm mt-1">Appliances virtuales y herramientas para tu infraestructura</p>
+        <p className="text-[#64748b] text-sm mt-1">Appliances virtuales para recibir Syslog en tu infraestructura</p>
       </div>
 
       {/* bcOS Hero */}
@@ -33,21 +33,21 @@ export default async function DownloadsPage() {
 
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-1">
-              <h2 className="text-lg font-bold text-white">bcOS</h2>
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#22c55e]/10 text-[#22c55e] border border-[#22c55e]/20">
-                Disponible
+              <h2 className="text-lg font-bold text-white">bcOS — Syslog Agent</h2>
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#3b82f6]/10 text-[#3b82f6] border border-[#3b82f6]/20">
+                v1.0.0
               </span>
             </div>
             <p className="text-sm text-[#64748b] mb-4">
-              Virtual appliance ligero basado en Alpine Linux. Recibe Syslog de tus firewalls y reenvía los eventos a BCVision en tiempo real.
-              Configurable vía web UI — no requiere conocimientos de Linux.
+              Virtual appliance basado en Alpine Linux. Recibe Syslog de tus firewalls y reenvía los eventos a BCVision.
+              Sin configuración de Linux — web UI incluida en el puerto 80.
             </p>
 
             <div className="grid grid-cols-3 gap-3 mb-5">
               {[
-                { icon: Server,  label: 'Recursos',   value: '1 CPU · 512 MB' },
-                { icon: Monitor, label: 'Web UI',      value: 'Puerto 80' },
-                { icon: Shield,  label: 'Syslog',      value: 'UDP/TCP 514' },
+                { icon: Server,  label: 'Recursos',  value: '1 CPU · 512 MB' },
+                { icon: Monitor, label: 'Web UI',     value: 'Puerto 80' },
+                { icon: Shield,  label: 'Syslog',     value: 'UDP/TCP 514' },
               ].map(({ icon: Icon, label, value }) => (
                 <div key={label} className="bg-[#060a12] rounded-xl p-3 border border-[#0f2038]">
                   <Icon className="w-3.5 h-3.5 text-[#3b82f6] mb-1.5" />
@@ -57,59 +57,115 @@ export default async function DownloadsPage() {
               ))}
             </div>
 
-            <div className="flex flex-wrap gap-3">
-              <a
-                href="https://github.com/fbolivar/bcvision/releases/latest/download/bcOS-x86_64.iso"
-                className="flex items-center gap-2 px-5 py-2.5 bg-[#3b82f6] hover:bg-[#2563eb] text-white rounded-xl text-sm font-semibold transition-colors"
-                download
-              >
-                <Download className="w-4 h-4" />
-                Descargar ISO (x86_64)
-              </a>
-              <a
-                href="https://github.com/fbolivar/bcvision/blob/main/bcOS/README.md"
-                target="_blank" rel="noopener noreferrer"
-                className="flex items-center gap-2 px-4 py-2.5 border border-[#0f2038] hover:border-[#3b82f6]/30 text-[#64748b] hover:text-white rounded-xl text-sm transition-colors"
-              >
-                Documentación <ChevronRight className="w-3.5 h-3.5" />
-              </a>
+            {/* Download options */}
+            <div className="space-y-3">
+              {/* Option A: GitHub Release */}
+              <div className="flex items-center gap-3 p-3 bg-[#060a12] rounded-xl border border-[#0f2038]">
+                <Download className="w-4 h-4 text-[#3b82f6] flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs font-semibold text-white">Descargar ISO compilada</div>
+                  <div className="text-[10px] text-[#475569] mt-0.5">GitHub Releases · compilada automáticamente por CI</div>
+                </div>
+                <a
+                  href="https://github.com/fbolivar/bcvision/releases/latest"
+                  target="_blank" rel="noopener noreferrer"
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-[#3b82f6] hover:bg-[#2563eb] text-white rounded-lg text-xs font-semibold transition-colors whitespace-nowrap"
+                >
+                  <ExternalLink className="w-3 h-3" />
+                  Ver releases
+                </a>
+              </div>
+
+              {/* Option B: Build locally */}
+              <div className="flex items-center gap-3 p-3 bg-[#060a12] rounded-xl border border-[#0f2038]">
+                <Package className="w-4 h-4 text-[#8b5cf6] flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs font-semibold text-white">Compilar localmente</div>
+                  <div className="text-[10px] text-[#475569] mt-0.5">Requiere Docker Desktop · ~5-8 minutos</div>
+                </div>
+                <a
+                  href="https://github.com/fbolivar/bcvision/tree/main/bcOS"
+                  target="_blank" rel="noopener noreferrer"
+                  className="flex items-center gap-1.5 px-3 py-1.5 border border-[#0f2038] hover:border-[#8b5cf6]/40 text-[#64748b] hover:text-white rounded-lg text-xs transition-colors whitespace-nowrap"
+                >
+                  <ChevronRight className="w-3 h-3" />
+                  Instrucciones
+                </a>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
+      {/* Build locally instructions */}
+      <div className="glass rounded-2xl p-5 mb-6">
+        <h3 className="text-sm font-bold text-white mb-1 flex items-center gap-2">
+          <Package className="w-4 h-4 text-[#8b5cf6]" />
+          Compilar la ISO localmente (más rápido)
+        </h3>
+        <p className="text-xs text-[#475569] mb-4">Con Docker Desktop instalado, ejecuta estos comandos en tu PC:</p>
+
+        <div className="space-y-3">
+          <div>
+            <div className="text-[10px] text-[#334155] font-bold uppercase tracking-wider mb-1.5">Windows (PowerShell)</div>
+            <div className="bg-[#020509] rounded-xl border border-[#0f2038] px-4 py-3 font-mono text-xs text-[#22c55e] space-y-1">
+              <div><span className="text-[#475569]"># Clona el repo si no lo tienes</span></div>
+              <div>git clone https://github.com/fbolivar/bcvision.git</div>
+              <div>cd bcvision\bcOS</div>
+              <div>.\build.ps1</div>
+            </div>
+          </div>
+          <div>
+            <div className="text-[10px] text-[#334155] font-bold uppercase tracking-wider mb-1.5">Linux / macOS</div>
+            <div className="bg-[#020509] rounded-xl border border-[#0f2038] px-4 py-3 font-mono text-xs text-[#22c55e] space-y-1">
+              <div>git clone https://github.com/fbolivar/bcvision.git</div>
+              <div>cd bcvision/bcOS && chmod +x build.sh</div>
+              <div>./build.sh</div>
+            </div>
+          </div>
+          <div className="flex items-start gap-2 p-3 bg-[#3b82f6]/8 border border-[#3b82f6]/15 rounded-xl">
+            <Clock className="w-3.5 h-3.5 text-[#60a5fa] flex-shrink-0 mt-0.5" />
+            <p className="text-[11px] text-[#475569]">
+              El script genera <span className="text-white font-mono">bcOS/output/bcOS-x86_64.iso</span> (~150 MB).
+              Primera vez tarda 5-8 min por la descarga de Alpine Linux.
+            </p>
+          </div>
+        </div>
+      </div>
+
       {/* Quick start */}
-      <div className="glass rounded-2xl p-6">
+      <div className="glass rounded-2xl p-5">
         <h3 className="text-sm font-bold text-white mb-4 flex items-center gap-2">
-          <Terminal className="w-4 h-4 text-[#8b5cf6]" />
-          Inicio rápido
+          <Terminal className="w-4 h-4 text-[#34d399]" />
+          Inicio rápido — 4 pasos
         </h3>
         <ol className="space-y-4">
           {[
             {
-              n: '1',
-              title: 'Descarga la ISO',
-              body: 'Descarga bcOS-x86_64.iso y crea una VM en VMware, VirtualBox o Proxmox con 1 CPU y 512MB RAM.',
+              n: '1', color: '#3b82f6',
+              title: 'Genera una clave API',
+              body: 'Ve a Ajustes → Agentes bcOS → Nueva clave API. Copia la clave generada.',
+              link: { label: 'Ir a Ajustes →', href: '/settings' },
             },
             {
-              n: '2',
-              title: 'Bootea la VM',
-              body: 'Inicia la VM desde la ISO. bcOS arranca automáticamente en modo live (sin disco). Anota la IP asignada.',
+              n: '2', color: '#8b5cf6',
+              title: 'Compila o descarga la ISO',
+              body: 'Usa el script build.ps1 / build.sh (Docker requerido) o descarga desde GitHub Releases.',
             },
             {
-              n: '3',
-              title: 'Configura el agente',
-              body: 'Abre http://<IP-del-appliance>/ en tu navegador y completa el wizard con la URL de BCVision y tu clave API.',
-              link: { label: 'Generar clave API →', href: '/settings?tab=agents' },
+              n: '3', color: '#22c55e',
+              title: 'Crea la VM y bootea',
+              body: 'VMware / VirtualBox / Proxmox: 2 vCPU, 1 GB RAM, red Bridged. Bootea desde la ISO. Anota la IP.',
             },
             {
-              n: '4',
-              title: 'Apunta tus firewalls',
-              body: 'En cada firewall, configura el destino de Syslog a la IP del appliance en el puerto 514 (UDP o TCP).',
+              n: '4', color: '#f59e0b',
+              title: 'Configura y conecta',
+              body: 'Abre http://<IP-VM>/ en el navegador. Ingresa la URL de BCVision y la clave API. Luego apunta el syslog de tus firewalls al puerto 514.',
             },
           ].map(step => (
             <li key={step.n} className="flex gap-4">
-              <div className="w-7 h-7 rounded-lg bg-[#0f2038] flex items-center justify-center text-xs font-bold text-[#3b82f6] flex-shrink-0 mt-0.5">
+              <div className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5"
+                style={{ background: step.color + '18', color: step.color, border: `1px solid ${step.color}30` }}>
                 {step.n}
               </div>
               <div>

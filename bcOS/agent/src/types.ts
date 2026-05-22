@@ -44,6 +44,8 @@ export interface AgentConfig {
   syslog_tcp_port: number
   web_port: number
   agent_name: string
+  fortigate_ip?: string
+  fortigate_api_token?: string
 }
 
 export interface AgentStats {

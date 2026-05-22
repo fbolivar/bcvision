@@ -3,9 +3,9 @@ import { Topbar } from '@/shared/components/topbar'
 import { TimeFilter } from '@/shared/components/time-filter'
 import { resolveHours } from '@/shared/lib/time'
 import { LiveRefresh } from '@/shared/components/live-refresh'
-import { getVpnStats, getVpnUsers, getVpnSessions, getVpnFailedLogins } from '@/features/vpn/services/vpn.service'
+import { getVpnStats, getVpnUsers, getVpnSessions, getVpnFailedLogins, getVpnActiveSessions } from '@/features/vpn/services/vpn.service'
 import { formatBytes, formatNumber } from '@/shared/lib/utils'
-import { Shield, Users, Wifi, AlertTriangle, Clock, XCircle } from 'lucide-react'
+import { Shield, Users, Wifi, AlertTriangle, Clock, XCircle, Radio } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
 interface PageProps { searchParams: Promise<Record<string, string>> }
@@ -19,11 +19,12 @@ export default async function VpnPage({ searchParams }: PageProps) {
   const { data: profile } = await supabase.from('users').select('org_id').eq('id', user!.id).single()
   const orgId = profile?.org_id ?? ''
 
-  const [stats, vpnUsers, sessions, failedLogins] = await Promise.all([
+  const [stats, vpnUsers, sessions, failedLogins, activeSessions] = await Promise.all([
     getVpnStats(orgId, hours),
     getVpnUsers(orgId, hours),
     getVpnSessions(orgId, hours, 30),
     getVpnFailedLogins(orgId, hours),
+    getVpnActiveSessions(orgId),
   ])
 
   const statCards = [
@@ -45,6 +46,54 @@ export default async function VpnPage({ searchParams }: PageProps) {
           <span className="text-xs text-[#334155] font-medium">Período de análisis</span>
           <TimeFilter current={param} />
         </div>
+
+        {/* Sesiones activas AHORA — vía FortiGate API */}
+        {activeSessions.length > 0 && (
+          <div className="glass rounded-2xl overflow-hidden border border-[#22c55e]/20">
+            <div className="flex items-center gap-2 px-5 py-3 border-b border-[#0f2038] bg-[#22c55e]/5">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#22c55e] opacity-60" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-[#22c55e]" />
+              </span>
+              <Radio className="w-3.5 h-3.5 text-[#22c55e]" />
+              <h2 className="font-bold text-white text-sm">Conectados ahora</h2>
+              <span className="ml-auto text-[10px] font-bold text-[#22c55e] bg-[#22c55e]/10 border border-[#22c55e]/20 px-2 py-0.5 rounded-full">{activeSessions.length} usuarios</span>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="border-b border-[#0a1628]">
+                    {['Usuario', 'IP Remota', 'IP Túnel', 'Duración', 'Transferido', 'OS'].map(h => (
+                      <th key={h} className="px-5 py-2.5 text-left font-bold text-[#1e3a5f] uppercase tracking-widest whitespace-nowrap">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {activeSessions.map(s => {
+                    const h = Math.floor(s.duration_sec / 3600)
+                    const m = Math.floor((s.duration_sec % 3600) / 60)
+                    const dur = h > 0 ? `${h}h ${m}m` : `${m}m`
+                    return (
+                      <tr key={s.user_name} className="border-b border-[#0a1628] hover:bg-[#0d1a2e]/60 transition-colors">
+                        <td className="px-5 py-2.5">
+                          <div className="flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full bg-[#22c55e] shadow-[0_0_6px_#22c55e]" />
+                            <span className="text-white font-medium">{s.user_name}</span>
+                          </div>
+                        </td>
+                        <td className="px-5 py-2.5 text-[#06b6d4] font-mono text-[10px]">{s.remote_ip ?? '—'}</td>
+                        <td className="px-5 py-2.5 text-[#475569] font-mono text-[10px]">{s.tunnel_ip ?? '—'}</td>
+                        <td className="px-5 py-2.5 text-[#94a3b8]">{s.duration_sec > 0 ? dur : '—'}</td>
+                        <td className="px-5 py-2.5 text-[#475569]">{formatBytes(s.bytes_tx + s.bytes_rx)}</td>
+                        <td className="px-5 py-2.5 text-[#334155]">{s.os_name ?? '—'}</td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
 
         {/* Stats */}
         <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">

@@ -26,6 +26,31 @@ export interface VpnStats {
   bytes_total: number
 }
 
+export interface VpnActiveSession {
+  user_name:    string
+  remote_ip:    string | null
+  tunnel_ip:    string | null
+  duration_sec: number
+  bytes_tx:     number
+  bytes_rx:     number
+  os_name:      string | null
+  tunnel_type:  string
+  last_seen:    string
+}
+
+export async function getVpnActiveSessions(orgId: string): Promise<VpnActiveSession[]> {
+  const supabase = await createClient()
+  // Sesiones reportadas en los últimos 3 minutos = activas ahora
+  const since = new Date(Date.now() - 3 * 60_000).toISOString()
+  const { data } = await supabase
+    .from('vpn_active_sessions')
+    .select('user_name, remote_ip, tunnel_ip, duration_sec, bytes_tx, bytes_rx, os_name, tunnel_type, last_seen')
+    .eq('org_id', orgId)
+    .gte('last_seen', since)
+    .order('bytes_tx', { ascending: false })
+  return (data ?? []) as VpnActiveSession[]
+}
+
 export async function getVpnStats(orgId: string, hours = 24): Promise<VpnStats> {
   const supabase = await createClient()
   const since = new Date(Date.now() - hours * 3_600_000).toISOString()

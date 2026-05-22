@@ -10,6 +10,7 @@ import { openDatabase, saveEvent, cleanOldEvents, getDatabaseSize } from './stor
 import { startSyncLoop }                       from './aggregator'
 import { startWebServer }                      from './web'
 import { forwardEvent }                        from './forwarder'
+import { startFortigatePoller }                from './fortigate-api'
 import type { FirewallBrand }                  from './types'
 
 // ── Init ──────────────────────────────────────────────────────────
@@ -136,6 +137,10 @@ scheduleCleanup()
 if (isConfigured()) {
   startSyncLoop(cfg)
   console.log(`[bcOS] Sincronización con BCVision: ${cfg.bcvision_url}`)
+  if (cfg.fortigate_ip && cfg.fortigate_api_token) {
+    startFortigatePoller(cfg)
+    console.log(`[bcOS] FortiGate API poller activo: ${cfg.fortigate_ip}`)
+  }
 } else {
   console.log('[bcOS] Sin configuración BCVision — modo standalone (solo almacenamiento local)')
 }

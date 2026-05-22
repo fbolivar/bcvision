@@ -1,0 +1,471 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - complementary [ref=e3]:
+      - link "BCVision Security Platform" [ref=e5] [cursor=pointer]:
+        - /url: /dashboard
+        - img [ref=e8]
+        - generic [ref=e15]:
+          - generic [ref=e16]: BCVision
+          - generic [ref=e17]: Security Platform
+      - navigation [ref=e18]:
+        - paragraph [ref=e19]: Monitoreo
+        - link "Dashboard" [ref=e20] [cursor=pointer]:
+          - /url: /dashboard
+          - img [ref=e21]
+          - generic [ref=e26]: Dashboard
+          - img [ref=e27]
+        - link "Tráfico" [ref=e29] [cursor=pointer]:
+          - /url: /traffic
+          - img [ref=e31]
+          - generic [ref=e33]: Tráfico
+        - link "Amenazas" [ref=e34] [cursor=pointer]:
+          - /url: /threats
+          - img [ref=e36]
+          - generic [ref=e38]: Amenazas
+        - link "Usuarios red" [ref=e39] [cursor=pointer]:
+          - /url: /users-net
+          - img [ref=e41]
+          - generic [ref=e46]: Usuarios red
+        - link "VPN" [ref=e47] [cursor=pointer]:
+          - /url: /vpn
+          - img [ref=e49]
+          - generic [ref=e53]: VPN
+        - link "Aplicaciones" [ref=e54] [cursor=pointer]:
+          - /url: /applications
+          - img [ref=e56]
+          - generic [ref=e58]: Aplicaciones
+        - link "Inteligencia" [ref=e59] [cursor=pointer]:
+          - /url: /security
+          - img [ref=e61]
+          - generic [ref=e63]: Inteligencia
+        - link "Dispositivos" [ref=e64] [cursor=pointer]:
+          - /url: /devices
+          - img [ref=e66]
+          - generic [ref=e68]: Dispositivos
+        - link "Alertas LIVE" [ref=e69] [cursor=pointer]:
+          - /url: /alerts
+          - img [ref=e71]
+          - generic [ref=e73]: Alertas
+          - generic [ref=e74]: LIVE
+        - link "Reportes" [ref=e76] [cursor=pointer]:
+          - /url: /reports
+          - img [ref=e78]
+          - generic [ref=e81]: Reportes
+        - link "Tendencias" [ref=e82] [cursor=pointer]:
+          - /url: /trends
+          - img [ref=e84]
+          - generic [ref=e87]: Tendencias
+        - generic [ref=e88]:
+          - paragraph [ref=e89]: Sistema
+          - link "Descargas bcOS" [ref=e90] [cursor=pointer]:
+            - /url: /downloads
+            - img [ref=e92]
+            - generic [ref=e95]: Descargas bcOS
+          - link "Ajustes" [ref=e96] [cursor=pointer]:
+            - /url: /settings
+            - img [ref=e98]
+            - generic [ref=e101]: Ajustes
+          - link "Config. avanzada" [ref=e102] [cursor=pointer]:
+            - /url: /org-settings
+            - img [ref=e104]
+            - generic [ref=e105]: Config. avanzada
+        - generic [ref=e106]:
+          - generic [ref=e111]: Sistemas operativos
+          - generic [ref=e112]: Syslog · IA · Alertas activos
+      - button "Cerrar sesión" [ref=e114] [cursor=pointer]:
+        - img [ref=e115]
+        - generic [ref=e118]: Cerrar sesión
+    - generic [ref=e120]:
+      - banner [ref=e121]:
+        - generic [ref=e123]:
+          - generic [ref=e124]:
+            - img [ref=e125]
+            - heading "Dashboard" [level=1] [ref=e127]
+          - paragraph [ref=e128]: Resumen de actividad · en vivo · últimos 15 min
+        - generic [ref=e129]:
+          - button "Buscar eventos, IPs... ⌘K" [ref=e130] [cursor=pointer]:
+            - img [ref=e131]
+            - generic [ref=e134]: Buscar eventos, IPs...
+            - generic [ref=e135]: ⌘K
+          - generic [ref=e140]: En vivo
+          - button [ref=e142] [cursor=pointer]:
+            - img [ref=e143]
+          - button "U" [ref=e148] [cursor=pointer]:
+            - generic [ref=e149]: U
+            - img [ref=e150]
+      - generic [ref=e152]:
+        - generic [ref=e153]:
+          - generic [ref=e154]: Período de análisis
+          - generic [ref=e155]:
+            - button "Ahora" [ref=e156] [cursor=pointer]: Ahora
+            - button "1h" [ref=e158] [cursor=pointer]
+            - button "24h" [ref=e159] [cursor=pointer]
+            - button "7d" [ref=e160] [cursor=pointer]
+            - button "30d" [ref=e161] [cursor=pointer]
+        - generic [ref=e162]:
+          - generic [ref=e166]:
+            - generic [ref=e167]:
+              - paragraph [ref=e168]: Eventos
+              - paragraph [ref=e169]: "63"
+            - img [ref=e171]
+          - generic [ref=e176]:
+            - generic [ref=e177]:
+              - paragraph [ref=e178]: Bloqueados
+              - paragraph [ref=e179]: "11"
+            - img [ref=e181]
+          - generic [ref=e186]:
+            - generic [ref=e187]:
+              - paragraph [ref=e188]: Amenazas
+              - paragraph [ref=e189]: "56"
+            - img [ref=e191]
+          - generic [ref=e197]:
+            - generic [ref=e198]:
+              - paragraph [ref=e199]: Dispositivos
+              - paragraph [ref=e200]: "1"
+              - paragraph [ref=e201]: activos
+            - img [ref=e203]
+          - generic [ref=e208]:
+            - generic [ref=e209]:
+              - paragraph [ref=e210]: Alertas críticas
+              - paragraph [ref=e211]: "0"
+              - paragraph [ref=e212]: abiertas
+            - img [ref=e214]
+          - generic [ref=e219]:
+            - generic [ref=e220]:
+              - paragraph [ref=e221]: Tráfico total
+              - paragraph [ref=e222]: 7 KB
+            - img [ref=e224]
+        - generic [ref=e228]:
+          - generic [ref=e229]:
+            - heading "Dispositivos activos" [level=2] [ref=e231]
+            - generic [ref=e232]: 1 online
+          - generic [ref=e234]:
+            - generic [ref=e236]:
+              - generic [ref=e237]:
+                - generic [ref=e238]:
+                  - generic [ref=e239]: 🔴
+                  - paragraph [ref=e240]: FTG_600E-PNNC_MASTER
+                - paragraph [ref=e241]: Fortinet FortiGate
+                - paragraph [ref=e242]: FG600E
+                - paragraph [ref=e243]: 192.168.50.1
+              - generic [ref=e244]:
+                - img [ref=e245]
+                - text: Online
+            - generic [ref=e249]:
+              - img [ref=e250]
+              - text: Sede Principal
+            - generic [ref=e253]:
+              - generic [ref=e254]: Último contacto
+              - generic [ref=e255]: Ahora
+        - generic [ref=e256]:
+          - heading "Análisis de tráfico · en vivo · últimos 15 min" [level=2] [ref=e259]
+          - generic [ref=e260]:
+            - generic [ref=e261]:
+              - heading "Aplicaciones" [level=3] [ref=e264]
+              - generic [ref=e266]:
+                - img [ref=e267]
+                - generic [ref=e273]:
+                  - generic [ref=e274]: "63"
+                  - generic [ref=e275]: total
+              - generic [ref=e276]:
+                - generic [ref=e277]:
+                  - generic [ref=e279]: HTTP
+                  - generic [ref=e280]: 35%
+                - generic [ref=e281]:
+                  - generic [ref=e283]: DNS
+                  - generic [ref=e284]: 33%
+                - generic [ref=e285]:
+                  - generic [ref=e287]: HTTPS
+                  - generic [ref=e288]: 21%
+                - generic [ref=e289]:
+                  - generic [ref=e291]: N/A
+                  - generic [ref=e292]: 11%
+            - generic [ref=e293]:
+              - heading "Categorías de URL" [level=3] [ref=e296]
+              - generic [ref=e298]:
+                - img [ref=e299]
+                - generic [ref=e303]:
+                  - generic [ref=e304]: "63"
+                  - generic [ref=e305]: total
+              - generic [ref=e306]:
+                - generic [ref=e307]:
+                  - generic [ref=e309]: Amenaza
+                  - generic [ref=e310]: 89%
+                - generic [ref=e311]:
+                  - generic [ref=e313]: VPN
+                  - generic [ref=e314]: 11%
+            - generic [ref=e315]:
+              - heading "IPs Origen" [level=3] [ref=e318]
+              - generic [ref=e320]:
+                - img [ref=e321]
+                - generic [ref=e329]:
+                  - generic [ref=e330]: "41"
+                  - generic [ref=e331]: total
+              - generic [ref=e332]:
+                - generic [ref=e333]:
+                  - generic [ref=e335]: 172.16.20.5
+                  - generic [ref=e336]: 41%
+                - generic [ref=e337]:
+                  - generic [ref=e339]: N/A
+                  - generic [ref=e340]: 17%
+                - generic [ref=e341]:
+                  - generic [ref=e343]: 192.168.71.45
+                  - generic [ref=e344]: 12%
+                - generic [ref=e345]:
+                  - generic [ref=e347]: 192.168.60.15
+                  - generic [ref=e348]: 12%
+                - generic [ref=e349]:
+                  - generic [ref=e351]: 10.10.200.2
+                  - generic [ref=e352]: 10%
+                - generic [ref=e353]:
+                  - generic [ref=e355]: 192.168.71.82
+                  - generic [ref=e356]: 7%
+            - generic [ref=e357]:
+              - heading "IPs Destino" [level=3] [ref=e360]
+              - generic [ref=e362]:
+                - img [ref=e363]
+                - generic [ref=e371]:
+                  - generic [ref=e372]: "41"
+                  - generic [ref=e373]: total
+              - generic [ref=e374]:
+                - generic [ref=e375]:
+                  - generic [ref=e377]: 192.168.50.3
+                  - generic [ref=e378]: 29%
+                - generic [ref=e379]:
+                  - generic [ref=e381]: 192.168.50.2
+                  - generic [ref=e382]: 22%
+                - generic [ref=e383]:
+                  - generic [ref=e385]: N/A
+                  - generic [ref=e386]: 17%
+                - generic [ref=e387]:
+                  - generic [ref=e389]: 23.218.213.4
+                  - generic [ref=e390]: 15%
+                - generic [ref=e391]:
+                  - generic [ref=e393]: 23.218.213.18
+                  - generic [ref=e394]: 10%
+                - generic [ref=e395]:
+                  - generic [ref=e397]: 57.144.114.3
+                  - generic [ref=e398]: 7%
+        - generic [ref=e399]:
+          - generic [ref=e400]:
+            - generic [ref=e401]:
+              - img [ref=e403]
+              - heading "Tráfico por Categorías de URL" [level=2] [ref=e406]
+              - generic [ref=e407]: Top 3 · 24h
+            - table [ref=e409]:
+              - rowgroup [ref=e410]:
+                - row "# Categoría URL Tráfico Sesiones Usuarios" [ref=e411]:
+                  - columnheader "#" [ref=e412]
+                  - columnheader "Categoría URL" [ref=e413]:
+                    - generic [ref=e414]:
+                      - img [ref=e415]
+                      - text: Categoría URL
+                  - columnheader "Tráfico" [ref=e418]:
+                    - generic [ref=e419]:
+                      - img [ref=e420]
+                      - text: Tráfico
+                  - columnheader "Sesiones" [ref=e422]:
+                    - generic [ref=e423]:
+                      - img [ref=e424]
+                      - text: Sesiones
+                  - columnheader "Usuarios" [ref=e429]:
+                    - generic [ref=e430]:
+                      - img [ref=e431]
+                      - text: Usuarios
+              - rowgroup [ref=e436]:
+                - row "1 Amenazas 7 KB 55 5" [ref=e437]:
+                  - cell "1" [ref=e438]
+                  - cell "Amenazas" [ref=e439]:
+                    - generic [ref=e441]: Amenazas
+                  - cell "7 KB" [ref=e444]
+                  - cell "55" [ref=e445]
+                  - cell "5" [ref=e446]
+                - row "2 VPN / Túneles 0 B 7 2" [ref=e447]:
+                  - cell "2" [ref=e448]
+                  - cell "VPN / Túneles" [ref=e449]:
+                    - generic [ref=e451]: VPN / Túneles
+                  - cell "0 B" [ref=e453]
+                  - cell "7" [ref=e454]
+                  - cell "2" [ref=e455]
+                - row "3 intrusion 0 B 1 —" [ref=e456]:
+                  - cell "3" [ref=e457]
+                  - cell "intrusion" [ref=e458]:
+                    - generic [ref=e460]: intrusion
+                  - cell "0 B" [ref=e462]
+                  - cell "1" [ref=e463]
+                  - cell "—" [ref=e464]
+          - generic [ref=e465]:
+            - generic [ref=e466]:
+              - img [ref=e468]
+              - heading "Tráfico de Usuarios y Direcciones IP" [level=2] [ref=e471]
+              - generic [ref=e472]: Top 5 · 24h
+            - table [ref=e474]:
+              - rowgroup [ref=e475]:
+                - row "# Usuario Origen IP Origen Aplicación Tráfico" [ref=e476]:
+                  - columnheader "#" [ref=e477]
+                  - columnheader "Usuario Origen" [ref=e478]:
+                    - generic [ref=e479]:
+                      - img [ref=e480]
+                      - text: Usuario Origen
+                  - columnheader "IP Origen" [ref=e483]:
+                    - generic [ref=e484]:
+                      - img [ref=e485]
+                      - text: IP Origen
+                  - columnheader "Aplicación" [ref=e488]:
+                    - generic [ref=e489]:
+                      - img [ref=e490]
+                      - text: Aplicación
+                  - columnheader "Tráfico" [ref=e493]:
+                    - generic [ref=e494]:
+                      - img [ref=e495]
+                      - text: Tráfico
+              - rowgroup [ref=e497]:
+                - row "1 ? Anónimo 192.168.100.18 HTTP 2.6 KB" [ref=e498]:
+                  - cell "1" [ref=e499]
+                  - cell "? Anónimo" [ref=e500]:
+                    - generic [ref=e501]:
+                      - generic [ref=e502]: "?"
+                      - generic [ref=e503]: Anónimo
+                  - cell "192.168.100.18" [ref=e504]
+                  - cell "HTTP" [ref=e505]
+                  - cell "2.6 KB" [ref=e506]:
+                    - generic [ref=e508]: 2.6 KB
+                - row "2 ? Anónimo 2801:1f:2800:78:5160:7d5c:23d2:6e5d HTTP 1.8 KB" [ref=e511]:
+                  - cell "2" [ref=e512]
+                  - cell "? Anónimo" [ref=e513]:
+                    - generic [ref=e514]:
+                      - generic [ref=e515]: "?"
+                      - generic [ref=e516]: Anónimo
+                  - cell "2801:1f:2800:78:5160:7d5c:23d2:6e5d" [ref=e517]
+                  - cell "HTTP" [ref=e518]
+                  - cell "1.8 KB" [ref=e519]:
+                    - generic [ref=e521]: 1.8 KB
+                - row "3 U usuario.soporte 192.168.70.78 HTTP 365 B" [ref=e524]:
+                  - cell "3" [ref=e525]
+                  - cell "U usuario.soporte" [ref=e526]:
+                    - generic [ref=e527]:
+                      - generic [ref=e528]: U
+                      - generic [ref=e529]: usuario.soporte
+                  - cell "192.168.70.78" [ref=e530]
+                  - cell "HTTP" [ref=e531]
+                  - cell "365 B" [ref=e532]:
+                    - generic [ref=e534]: 365 B
+                - row "4 L LUISA.CASTILLO 192.168.71.82 HTTP 333 B" [ref=e537]:
+                  - cell "4" [ref=e538]
+                  - cell "L LUISA.CASTILLO" [ref=e539]:
+                    - generic [ref=e540]:
+                      - generic [ref=e541]: L
+                      - generic [ref=e542]: LUISA.CASTILLO
+                  - cell "192.168.71.82" [ref=e543]
+                  - cell "HTTP" [ref=e544]
+                  - cell "333 B" [ref=e545]:
+                    - generic [ref=e547]: 333 B
+                - row "5 V vanessa.cantillo 192.168.70.127 HTTP 333 B" [ref=e550]:
+                  - cell "5" [ref=e551]
+                  - cell "V vanessa.cantillo" [ref=e552]:
+                    - generic [ref=e553]:
+                      - generic [ref=e554]: V
+                      - generic [ref=e555]: vanessa.cantillo
+                  - cell "192.168.70.127" [ref=e556]
+                  - cell "HTTP" [ref=e557]
+                  - cell "333 B" [ref=e558]:
+                    - generic [ref=e560]: 333 B
+        - generic [ref=e563]:
+          - generic [ref=e564]:
+            - generic [ref=e565]:
+              - heading "Eventos recientes" [level=2] [ref=e568]
+              - generic [ref=e569]: 5 eventos
+            - table [ref=e572]:
+              - rowgroup [ref=e573]:
+                - row "Hora Tipo Acción Proto Origen Destino Severidad Regla de Firewall" [ref=e574]:
+                  - columnheader "Hora" [ref=e575]
+                  - columnheader "Tipo" [ref=e576]
+                  - columnheader "Acción" [ref=e577]
+                  - columnheader "Proto" [ref=e578]
+                  - columnheader "Origen" [ref=e579]
+                  - columnheader "Destino" [ref=e580]
+                  - columnheader "Severidad" [ref=e581]
+                  - columnheader "Regla de Firewall" [ref=e582]
+              - rowgroup [ref=e583]:
+                - row "Ahora threat — TCP 192.168.132.6:59281 23.218.213.4:80 high ALLOW-WEB-CONTENT" [ref=e584] [cursor=pointer]:
+                  - cell "Ahora" [ref=e585]
+                  - cell "threat" [ref=e586]
+                  - cell "—" [ref=e587]
+                  - cell "TCP" [ref=e588]
+                  - cell "192.168.132.6:59281" [ref=e589]:
+                    - text: 192.168.132.6
+                    - generic [ref=e590]: :59281
+                  - cell "23.218.213.4:80" [ref=e591]:
+                    - text: 23.218.213.4
+                    - generic [ref=e592]: :80
+                  - cell "high" [ref=e593]:
+                    - generic [ref=e594]: high
+                  - cell "ALLOW-WEB-CONTENT" [ref=e596]:
+                    - generic [ref=e597]: ALLOW-WEB-CONTENT
+                - row "Ahora vpn — — — — critical ALLOW-ANY" [ref=e599] [cursor=pointer]:
+                  - cell "Ahora" [ref=e600]
+                  - cell "vpn" [ref=e601]
+                  - cell "—" [ref=e602]
+                  - cell "—" [ref=e603]
+                  - cell "—" [ref=e604]
+                  - cell "—" [ref=e605]
+                  - cell "critical" [ref=e606]:
+                    - generic [ref=e607]: critical
+                  - cell "ALLOW-ANY" [ref=e609]:
+                    - generic [ref=e610]: ALLOW-ANY
+                - row "Ahora threat deny TCP 192.168.71.102:43648 57.144.114.3:443 high DENY-FACEBOOK" [ref=e612] [cursor=pointer]:
+                  - cell "Ahora" [ref=e613]
+                  - cell "threat" [ref=e614]
+                  - cell "deny" [ref=e615]
+                  - cell "TCP" [ref=e616]
+                  - cell "192.168.71.102:43648" [ref=e617]:
+                    - text: 192.168.71.102
+                    - generic [ref=e618]: :43648
+                  - cell "57.144.114.3:443" [ref=e619]:
+                    - text: 57.144.114.3
+                    - generic [ref=e620]: :443
+                  - cell "high" [ref=e621]:
+                    - generic [ref=e622]: high
+                  - cell "DENY-FACEBOOK" [ref=e624]:
+                    - generic [ref=e625]: DENY-FACEBOOK
+                - row "Ahora threat — TCP 192.168.71.82:54733 23.205.165.9:80 high ALLOW-WEB-CONTENT" [ref=e627] [cursor=pointer]:
+                  - cell "Ahora" [ref=e628]
+                  - cell "threat" [ref=e629]
+                  - cell "—" [ref=e630]
+                  - cell "TCP" [ref=e631]
+                  - cell "192.168.71.82:54733" [ref=e632]:
+                    - text: 192.168.71.82
+                    - generic [ref=e633]: :54733
+                  - cell "23.205.165.9:80" [ref=e634]:
+                    - text: 23.205.165.9
+                    - generic [ref=e635]: :80
+                  - cell "high" [ref=e636]:
+                    - generic [ref=e637]: high
+                  - cell "ALLOW-WEB-CONTENT" [ref=e639]:
+                    - generic [ref=e640]: ALLOW-WEB-CONTENT
+                - row "Ahora threat — TCP 192.168.2.103:62043 34.98.110.65:443 high ALLOW-WEB-CONTENT" [ref=e642] [cursor=pointer]:
+                  - cell "Ahora" [ref=e643]
+                  - cell "threat" [ref=e644]
+                  - cell "—" [ref=e645]
+                  - cell "TCP" [ref=e646]
+                  - cell "192.168.2.103:62043" [ref=e647]:
+                    - text: 192.168.2.103
+                    - generic [ref=e648]: :62043
+                  - cell "34.98.110.65:443" [ref=e649]:
+                    - text: 34.98.110.65
+                    - generic [ref=e650]: :443
+                  - cell "high" [ref=e651]:
+                    - generic [ref=e652]: high
+                  - cell "ALLOW-WEB-CONTENT" [ref=e654]:
+                    - generic [ref=e655]: ALLOW-WEB-CONTENT
+          - generic [ref=e657]:
+            - generic [ref=e658]:
+              - generic [ref=e659]:
+                - img [ref=e661]
+                - heading "Eventos en vivo" [level=2] [ref=e667]
+              - generic [ref=e669]: "0"
+            - generic [ref=e674]:
+              - img [ref=e676]
+              - paragraph [ref=e678]: Esperando eventos...
+              - paragraph [ref=e679]: Los nuevos logs Syslog aparecerán aquí
+  - alert [ref=e680]

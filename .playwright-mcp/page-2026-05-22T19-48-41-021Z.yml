@@ -1,0 +1,75 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - generic [ref=e8]:
+      - generic [ref=e9]:
+        - img [ref=e12]
+        - generic [ref=e19]:
+          - generic [ref=e20]: BCVision
+          - generic [ref=e21]: Security Analytics
+      - generic [ref=e22]:
+        - generic [ref=e23]:
+          - generic [ref=e24]: Plataforma Enterprise
+          - heading "Visibilidad total. Tiempo real." [level=2] [ref=e26]:
+            - text: Visibilidad total.
+            - text: Tiempo real.
+          - paragraph [ref=e27]: Conecta tus firewalls vía Syslog y obtén análisis de tráfico, detección de amenazas y reportes ejecutivos con IA en segundos.
+        - generic [ref=e28]:
+          - generic [ref=e29]:
+            - generic [ref=e30]: 🔧
+            - generic [ref=e31]: 6+
+            - generic [ref=e32]: Fabricantes
+          - generic [ref=e33]:
+            - generic [ref=e34]: ⚡
+            - generic [ref=e35]: 10K+
+            - generic [ref=e36]: Eventos/seg
+          - generic [ref=e37]:
+            - generic [ref=e38]: 🎯
+            - generic [ref=e39]: <2s
+            - generic [ref=e40]: Latencia
+          - generic [ref=e41]:
+            - generic [ref=e42]: 🗄️
+            - generic [ref=e43]: 90d
+            - generic [ref=e44]: Retención
+        - generic [ref=e45]:
+          - generic [ref=e46]:
+            - generic [ref=e47]: A
+            - generic [ref=e48]: B
+            - generic [ref=e49]: C
+            - generic [ref=e50]: D
+          - generic [ref=e51]: Equipos de seguridad confían en BCVision
+      - paragraph [ref=e52]: © 2025 BCVision · BC Fabric SAS · Todos los derechos reservados
+    - generic [ref=e54]:
+      - generic [ref=e58]:
+        - generic [ref=e59]:
+          - generic [ref=e60]: Acceso seguro
+          - heading "Iniciar sesión" [level=1] [ref=e62]
+          - paragraph [ref=e63]: Accede a tu centro de comando de seguridad
+        - generic [ref=e64]:
+          - generic [ref=e65]:
+            - text: Email
+            - generic [ref=e66]:
+              - img [ref=e67]
+              - textbox "Email" [ref=e70]:
+                - /placeholder: admin@empresa.com
+          - generic [ref=e71]:
+            - text: Contraseña
+            - generic [ref=e72]:
+              - img [ref=e73]
+              - textbox "Contraseña" [ref=e76]:
+                - /placeholder: ••••••••
+              - button [ref=e77] [cursor=pointer]:
+                - img [ref=e78]
+          - link "¿Olvidaste tu contraseña?" [ref=e82] [cursor=pointer]:
+            - /url: /forgot-password
+          - button "Iniciar sesión" [ref=e83] [cursor=pointer]:
+            - img [ref=e84]
+            - text: Iniciar sesión
+        - generic [ref=e89]: o
+        - paragraph [ref=e91]:
+          - text: ¿Sin cuenta?
+          - link "Crear organización →" [ref=e92] [cursor=pointer]:
+            - /url: /signup
+      - generic [ref=e93]:
+        - img [ref=e94]
+        - text: Conexión cifrada TLS 1.3 · Supabase Auth
+  - alert [ref=e97]

@@ -54,7 +54,7 @@ export default async function VpnPage() {
               <table className="w-full text-xs">
                 <thead>
                   <tr className="border-b border-[#0a1628]">
-                    {['Túnel', 'IP Remota', 'IP Túnel', 'Duración', 'Transferido'].map(h => (
+                    {['Usuario / Túnel', 'IP Remota', 'IP Túnel', 'Duración', 'Transferido'].map(h => (
                       <th key={h} className="px-5 py-2.5 text-left font-bold text-[#1e3a5f] uppercase tracking-widest whitespace-nowrap">{h}</th>
                     ))}
                   </tr>

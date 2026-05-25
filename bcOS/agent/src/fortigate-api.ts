@@ -35,17 +35,22 @@ export async function fetchActiveIpsecVpnSessions(cfg: AgentConfig): Promise<FgV
   const nowSec = Math.floor(Date.now() / 1000)
 
   return results
-    .filter(r => r['type'] === 'dialup' || r['username'] || r['user'])
+    .filter(r => r['name'])
     .map(r => {
       const createdAt = Number(r['creation_time'] ?? r['created'] ?? 0)
+      const isDialup = r['type'] === 'dialup'
+      // dialup = client VPN con usuario autenticado; automatic = site-to-site sin usuario
+      const userName = isDialup
+        ? String(r['user'] ?? r['username'] ?? r['name'] ?? '')
+        : String(r['name'] ?? '')
       return {
-        user_name:    String(r['username'] ?? r['user'] ?? r['name'] ?? ''),
+        user_name:    userName,
         remote_ip:    String(r['rgwy'] ?? r['remote_gateway'] ?? r['remip'] ?? ''),
-        tunnel_ip:    String(r['tun_ip'] ?? r['tunnel_ip'] ?? ''),
+        tunnel_ip:    String(r['tun_id'] ?? r['tun_ip'] ?? r['tunnel_ip'] ?? ''),
         duration_sec: createdAt > 0 ? Math.max(0, nowSec - createdAt) : 0,
         bytes_tx:     Number(r['outgoing_bytes'] ?? r['bytes_tx'] ?? 0),
         bytes_rx:     Number(r['incoming_bytes']  ?? r['bytes_rx'] ?? 0),
-        os_name:      '',
+        os_name:      String(r['name'] ?? ''),
         tunnel_type:  'ipsec',
       }
     })

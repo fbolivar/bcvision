@@ -15,10 +15,12 @@ export async function GET(req: NextRequest) {
   const days    = parseInt(req.nextUrl.searchParams.get('period') ?? '30', 10)
   const since   = new Date(Date.now() - days * 86400000).toISOString()
 
+  const BLOCKED = new Set(['deny','drop','block','blocked','dropped','reset','clear_session'])
+
   // Aggregate events per day
   const { data: dailyRaw } = await supabase
     .from('firewall_events')
-    .select('event_time, action, severity, bytes_sent, bytes_received')
+    .select('event_time, action, severity, bytes_sent, bytes_received, parsed_data')
     .eq('org_id', profile.org_id)
     .gte('event_time', since)
     .order('event_time', { ascending: true })
@@ -32,8 +34,10 @@ export async function GET(req: NextRequest) {
     const date = e.event_time.slice(0, 10)
     if (!byDay[date]) byDay[date] = { date, total: 0, blocked: 0, threats: 0, bytes: 0 }
     byDay[date].total++
-    if (['deny','drop','block','reset'].includes(e.action ?? '')) byDay[date].blocked++
-    if (['critical','high'].includes(e.severity)) byDay[date].threats++
+    const pd = e.parsed_data as Record<string, unknown> | null
+    const effectiveAction = (e.action ?? (pd?.['action'] as string | undefined) ?? '').toLowerCase()
+    if (BLOCKED.has(effectiveAction)) byDay[date].blocked++
+    if (['critical','high'].includes(e.severity ?? '')) byDay[date].threats++
     byDay[date].bytes += (e.bytes_sent ?? 0) + (e.bytes_received ?? 0)
   }
 

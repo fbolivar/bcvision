@@ -64,8 +64,9 @@ export interface ReportMetrics {
 
   // VPN
   vpn_ssl_users: Array<{ user: string; ip: string | null; first_used: string; last_seen: string; sessions: number; failed: number; bytes_sent: number; bytes_received: number; tunnel_type: string | null; vpn_group: string | null }>
-  vpn_failed_logins: Array<{ user: string; type: string; count: number }>
-  vpn_daily: Array<{ date: string; sessions: number; active_users: number; bytes: number }>
+  vpn_failed_logins: Array<{ user: string; type: string; count: number; unique_ips: number }>
+  vpn_daily: Array<{ date: string; sessions: number; active_users: number; bytes: number; failed: number }>
+  vpn_attack_ips: Array<{ ip: string; count: number; country: string | null }>
 
   // Timeline
   session_history: Array<{ date: string; sessions: number }>
@@ -107,7 +108,7 @@ export async function aggregateReportMetrics(
   const end   = new Date(periodEnd + 'T23:59:59').toISOString()
   const days  = Math.max(1, Math.round((new Date(end).getTime() - new Date(start).getTime()) / 86_400_000))
 
-  const [orgRes, eventsRes, devicesRes, criticalRes] = await Promise.all([
+  const [orgRes, eventsRes, devicesRes, criticalRes, vpnDetailRes] = await Promise.all([
     supabase.from('organizations').select('name, plan').eq('id', orgId).single(),
     supabase.from('firewall_events')
       .select('event_type,action,severity,protocol,src_ip,dst_ip,dst_port,src_country,dst_country,user_name,application,bytes_sent,bytes_received,threat_name,threat_category,event_time')
@@ -123,6 +124,14 @@ export async function aggregateReportMetrics(
       .lte('event_time', end)
       .order('event_time', { ascending: false })
       .limit(10),
+    // VPN detail query with parsed_data for tunnel type, group, and action
+    supabase.from('firewall_events')
+      .select('user_name,src_ip,src_country,action,bytes_sent,bytes_received,event_time,parsed_data')
+      .eq('org_id', orgId)
+      .eq('event_type', 'vpn')
+      .gte('event_time', start)
+      .lte('event_time', end)
+      .limit(20000),
   ])
 
   const events  = eventsRes.data  ?? []
@@ -279,34 +288,58 @@ export async function aggregateReportMetrics(
       if (risk > appCategoryMap[e.application].risk) appCategoryMap[e.application].risk = risk
     }
 
-    // ── VPN ────────────────────────────────────────────────
-    if (e.event_type === 'vpn') {
-      const u = e.user_name ?? e.src_ip ?? 'Desconocido'
-      const pd = (e as unknown as Record<string, unknown>)['parsed_data'] as Record<string, unknown> | null
-      const tunnelType  = (pd?.['tunneltype'] as string | undefined) ?? null
-      const vpnGroup    = (pd?.['group']      as string | undefined) ?? null
-      const pdAction    = (pd?.['action']     as string | undefined) ?? ''
-      const isFailed    = isBlocked || ['negotiate-fail','ssl-login-fail','ike-failed','phase2-failed'].some(a => pdAction.includes(a))
-      const isSession   = !isFailed && ['tunnel-up','ssl-new-con'].some(a => pdAction.includes(a))
+  }
 
-      if (!vpnUserMap[u]) {
-        vpnUserMap[u] = { ip: e.src_ip, first_used: e.event_time, last_seen: e.event_time, sessions: 0, failed: 0, bytes_sent: 0, bytes_received: 0, tunnel_type: tunnelType, vpn_group: vpnGroup }
+  // ── VPN detail processing (from dedicated query with parsed_data) ─
+  const vpnEvents = vpnDetailRes.data ?? []
+  const vpnFailedUserIpsMap: Record<string, Set<string>> = {}
+  const vpnAttackIpMap: Record<string, { count: number; country: string | null }> = {}
+
+  for (const e of vpnEvents) {
+    const pd = e.parsed_data as Record<string, unknown> | null
+    const subtype = pd?.['subtype'] as string | undefined
+    const tunnelType = pd?.['tunnel_type'] as string | null | undefined
+    const vpnGroup = (pd?.['group'] ?? pd?.['vpn_group']) as string | null | undefined
+    const effectiveAction = (e.action ?? (pd?.['action'] as string | undefined) ?? '').toLowerCase()
+    const isFailed = effectiveAction === 'deny' || effectiveAction === 'drop' || !!subtype?.includes('fail')
+    const dateKey = (e.event_time as string).slice(0, 10)
+
+    if (!vpnDailyMap[dateKey]) vpnDailyMap[dateKey] = { sessions: 0, users: new Set(), bytes: 0 }
+
+    if (isFailed) {
+      if (e.user_name) {
+        vpnFailedMap[e.user_name] = (vpnFailedMap[e.user_name] ?? 0) + 1
+        if (!vpnFailedUserIpsMap[e.user_name]) vpnFailedUserIpsMap[e.user_name] = new Set()
+        if (e.src_ip) vpnFailedUserIpsMap[e.user_name].add(e.src_ip)
       }
-      vpnUserMap[u].bytes_sent     += e.bytes_sent     ?? 0
-      vpnUserMap[u].bytes_received += e.bytes_received ?? 0
-      if (e.event_time < vpnUserMap[u].first_used) vpnUserMap[u].first_used = e.event_time
-      if (e.event_time > vpnUserMap[u].last_seen)  vpnUserMap[u].last_seen  = e.event_time
-      if (isSession) vpnUserMap[u].sessions++
-      if (isFailed)  { vpnUserMap[u].failed++; vpnFailedMap[u] = (vpnFailedMap[u] ?? 0) + 1 }
-      if (!vpnUserMap[u].tunnel_type && tunnelType) vpnUserMap[u].tunnel_type = tunnelType
-      if (!vpnUserMap[u].vpn_group   && vpnGroup)   vpnUserMap[u].vpn_group   = vpnGroup
-
-      // Daily VPN
-      const dateKey = e.event_time.slice(0, 10)
-      if (!vpnDailyMap[dateKey]) vpnDailyMap[dateKey] = { sessions: 0, users: new Set(), bytes: 0 }
-      if (isSession) vpnDailyMap[dateKey].sessions++
-      vpnDailyMap[dateKey].users.add(u)
+      if (e.src_ip) {
+        if (!vpnAttackIpMap[e.src_ip]) vpnAttackIpMap[e.src_ip] = { count: 0, country: e.src_country ?? null }
+        vpnAttackIpMap[e.src_ip].count++
+      }
+      vpnDailyMap[dateKey].sessions++
+    } else {
+      const bytes = (e.bytes_sent ?? 0) + (e.bytes_received ?? 0)
+      vpnDailyMap[dateKey].sessions++
       vpnDailyMap[dateKey].bytes += bytes
+      if (e.user_name) {
+        vpnDailyMap[dateKey].users.add(e.user_name)
+        if (!vpnUserMap[e.user_name]) {
+          vpnUserMap[e.user_name] = {
+            ip: e.src_ip ?? null,
+            first_used: e.event_time as string,
+            last_seen:  e.event_time as string,
+            sessions: 0, failed: 0,
+            bytes_sent: 0, bytes_received: 0,
+            tunnel_type: tunnelType ?? null,
+            vpn_group:   vpnGroup   ?? null,
+          }
+        }
+        vpnUserMap[e.user_name].sessions++
+        vpnUserMap[e.user_name].bytes_sent     += (e.bytes_sent ?? 0)
+        vpnUserMap[e.user_name].bytes_received += (e.bytes_received ?? 0)
+        if ((e.event_time as string) > vpnUserMap[e.user_name].last_seen)
+          vpnUserMap[e.user_name].last_seen = e.event_time as string
+      }
     }
   }
 
@@ -390,11 +423,14 @@ export async function aggregateReportMetrics(
       .map(([user, v]) => ({ user, ip: v.ip, first_used: v.first_used, last_seen: v.last_seen, sessions: v.sessions, failed: v.failed, bytes_sent: v.bytes_sent, bytes_received: v.bytes_received, tunnel_type: v.tunnel_type, vpn_group: v.vpn_group }))
       .sort((a, b) => (b.bytes_sent + b.bytes_received) - (a.bytes_sent + a.bytes_received)).slice(0, 30),
     vpn_failed_logins: Object.entries(vpnFailedMap)
-      .map(([user, count]) => ({ user, type: 'ssl-web', count }))
-      .sort((a, b) => b.count - a.count).slice(0, 20),
+      .map(([user, count]) => ({ user, type: 'ssl-login-fail', count, unique_ips: vpnFailedUserIpsMap[user]?.size ?? 0 }))
+      .sort((a, b) => b.count - a.count).slice(0, 30),
     vpn_daily: Object.entries(vpnDailyMap)
-      .map(([date, v]) => ({ date, sessions: v.sessions, active_users: v.users.size, bytes: v.bytes }))
+      .map(([date, v]) => ({ date, sessions: v.sessions, active_users: v.users.size, bytes: v.bytes, failed: 0 }))
       .sort((a, b) => a.date.localeCompare(b.date)),
+    vpn_attack_ips: Object.entries(vpnAttackIpMap)
+      .map(([ip, v]) => ({ ip, count: v.count, country: v.country }))
+      .sort((a, b) => b.count - a.count).slice(0, 25),
 
     // Timeline
     session_history: sessionHistory,

@@ -128,6 +128,87 @@ export async function getVpnSessions(orgId: string, hours = 24, limit = 50): Pro
   return (data ?? []) as VpnSession[]
 }
 
+export interface VpnMigrationUser {
+  user_name: string
+  ssl_sessions: number
+  ipsec_sessions: number
+  status: 'ssl_only' | 'ipsec_only' | 'migrating' | 'unknown'
+  last_ssl: string | null
+  last_ipsec: string | null
+}
+
+export interface VpnMigrationSummary {
+  ssl_users: number
+  ipsec_users: number
+  migrating_users: number
+  ssl_sessions: number
+  ipsec_sessions: number
+}
+
+export async function getVpnMigrationStatus(orgId: string, days = 30): Promise<{
+  summary: VpnMigrationSummary
+  users: VpnMigrationUser[]
+}> {
+  const supabase = await createClient()
+  const since = new Date(Date.now() - days * 86_400_000).toISOString()
+
+  const { data } = await supabase
+    .from('firewall_events')
+    .select('user_name, event_time, parsed_data')
+    .eq('org_id', orgId)
+    .eq('event_type', 'vpn')
+    .gte('event_time', since)
+    .not('user_name', 'is', null)
+    .neq('user_name', 'N/A')
+
+  const map = new Map<string, VpnMigrationUser>()
+
+  for (const row of (data ?? [])) {
+    const userName = row.user_name as string
+    const tunnelType = (row.parsed_data as Record<string, unknown>)?.tunneltype as string | null
+    const eventTime = row.event_time as string
+
+    if (!map.has(userName)) {
+      map.set(userName, {
+        user_name: userName,
+        ssl_sessions: 0,
+        ipsec_sessions: 0,
+        status: 'unknown',
+        last_ssl: null,
+        last_ipsec: null,
+      })
+    }
+
+    const user = map.get(userName)!
+    if (tunnelType === 'ssl') {
+      user.ssl_sessions++
+      if (!user.last_ssl || eventTime > user.last_ssl) user.last_ssl = eventTime
+    } else if (tunnelType === 'ipsec') {
+      user.ipsec_sessions++
+      if (!user.last_ipsec || eventTime > user.last_ipsec) user.last_ipsec = eventTime
+    }
+  }
+
+  for (const user of map.values()) {
+    if (user.ssl_sessions > 0 && user.ipsec_sessions > 0) user.status = 'migrating'
+    else if (user.ipsec_sessions > 0) user.status = 'ipsec_only'
+    else if (user.ssl_sessions > 0) user.status = 'ssl_only'
+  }
+
+  const users = Array.from(map.values())
+    .sort((a, b) => (b.ipsec_sessions + b.ssl_sessions) - (a.ipsec_sessions + a.ssl_sessions))
+
+  const summary: VpnMigrationSummary = {
+    ssl_users:      users.filter(u => u.status === 'ssl_only').length,
+    ipsec_users:    users.filter(u => u.status === 'ipsec_only').length,
+    migrating_users:users.filter(u => u.status === 'migrating').length,
+    ssl_sessions:   users.reduce((s, u) => s + u.ssl_sessions, 0),
+    ipsec_sessions: users.reduce((s, u) => s + u.ipsec_sessions, 0),
+  }
+
+  return { summary, users }
+}
+
 export async function getVpnFailedLogins(orgId: string, hours = 24): Promise<{ src_ip: string; count: number }[]> {
   const supabase = await createClient()
   const since = new Date(Date.now() - hours * 3_600_000).toISOString()

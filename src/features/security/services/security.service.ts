@@ -30,6 +30,13 @@ export interface SecuritySummary {
   unique_sources: number
 }
 
+const BLOCKED_ACTIONS = new Set(['deny', 'drop', 'block', 'blocked', 'dropped', 'reset', 'clear_session'])
+
+function isBlocked(action: string | null, pd?: Record<string, unknown> | null): boolean {
+  const effective = (action ?? (pd?.['action'] as string | undefined) ?? '').toLowerCase()
+  return BLOCKED_ACTIONS.has(effective)
+}
+
 const IPS_CATEGORIES = ['intrusion', 'exploit', 'scan', 'probe', 'attack', 'ips', 'vulnerability']
 const MALWARE_CATEGORIES = ['malware', 'adware', 'spyware', 'ransomware', 'trojan', 'virus', 'worm']
 const BOTNET_CATEGORIES = ['botnet', 'c2', 'command-and-control', 'bot']
@@ -47,7 +54,7 @@ export async function getSecuritySummary(orgId: string, hours = 24): Promise<Sec
 
   const { data } = await supabase
     .from('firewall_events')
-    .select('threat_category, action, src_ip')
+    .select('threat_category, action, src_ip, parsed_data')
     .eq('org_id', orgId)
     .gte('event_time', since)
     .not('threat_category', 'is', null)
@@ -60,7 +67,7 @@ export async function getSecuritySummary(orgId: string, hours = 24): Promise<Sec
     malware_events: rows.filter(r => matchesCategory(r.threat_category, MALWARE_CATEGORIES)).length,
     botnet_events:  rows.filter(r => matchesCategory(r.threat_category, BOTNET_CATEGORIES)).length,
     phishing_events:rows.filter(r => matchesCategory(r.threat_category, PHISHING_CATEGORIES)).length,
-    total_blocked:  rows.filter(r => r.action === 'deny' || r.action === 'drop').length,
+    total_blocked:  rows.filter(r => isBlocked(r.action, r.parsed_data as Record<string, unknown> | null)).length,
     unique_sources: uniqueSources.size,
   }
 }
@@ -81,7 +88,7 @@ export async function getThreatCategories(orgId: string, hours = 24): Promise<Th
 
   for (const row of data ?? []) {
     const cat = row.threat_category ?? 'unknown'
-    const blocked = (row.action === 'deny' || row.action === 'drop') ? 1 : 0
+    const blocked = isBlocked(row.action, (row as Record<string, unknown>)['parsed_data'] as Record<string, unknown> | null) ? 1 : 0
     const existing = map.get(cat)
     if (existing) {
       existing.total++
@@ -117,7 +124,7 @@ export async function getTopAttackSources(orgId: string, hours = 24, limit = 15)
   const map = new Map<string, AttackSource>()
   for (const row of data ?? []) {
     const ip = row.src_ip ?? 'unknown'
-    const blocked = (row.action === 'deny' || row.action === 'drop') ? 1 : 0
+    const blocked = isBlocked(row.action, (row as Record<string, unknown>)['parsed_data'] as Record<string, unknown> | null) ? 1 : 0
     const existing = map.get(ip)
     if (existing) {
       existing.count++
@@ -155,7 +162,7 @@ export async function getGeoAttacks(orgId: string, hours = 24): Promise<GeoAttac
   const map = new Map<string, GeoAttack>()
   for (const row of data ?? []) {
     const country = row.src_country ?? 'Unknown'
-    const blocked = (row.action === 'deny' || row.action === 'drop') ? 1 : 0
+    const blocked = isBlocked(row.action, (row as Record<string, unknown>)['parsed_data'] as Record<string, unknown> | null) ? 1 : 0
     const existing = map.get(country)
     if (existing) {
       existing.count++
@@ -183,7 +190,7 @@ export async function getAffectedUsers(orgId: string, hours = 24) {
   const map = new Map<string, { user_name: string; events: number; categories: Set<string>; blocked: number }>()
   for (const row of data ?? []) {
     const user = row.user_name ?? 'unknown'
-    const blocked = (row.action === 'deny' || row.action === 'drop') ? 1 : 0
+    const blocked = isBlocked(row.action, (row as Record<string, unknown>)['parsed_data'] as Record<string, unknown> | null) ? 1 : 0
     const existing = map.get(user)
     if (existing) {
       existing.events++

@@ -1,4 +1,4 @@
-import { Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/renderer'
+import { Document, Page, Text, View, StyleSheet, Image, Svg, Rect, Path, Line } from '@react-pdf/renderer'
 import type { ReportMetrics } from '../services/metrics-aggregator'
 import type { GeneratedReport, ExecutiveReport, TechnicalReport, ComplianceReport } from '../services/claude-report.service'
 
@@ -13,8 +13,17 @@ const GREEN  = '#16a34a'
 const AMBER  = '#d97706'
 const WHITE  = '#ffffff'
 
+// ─── Parques Nacionales Naturales de Colombia — Executive palette ─────────────
+const NP_DARK  = '#0d3b26'  // selva profunda · Serranía de la Macarena
+const NP_MED   = '#1a5c38'  // bosque andino · Chingaza
+const NP_LIGHT = '#3a8a5e'  // hoja viva · Tayrona
+const NP_GOLD  = '#b8760a'  // luz solar · fauna dorada
+const NP_EARTH = '#7d5a3c'  // suelo fértil
+const NP_WATER = '#1e5f7a'  // ríos y lagunas · Amacayacu
+const NP_PARCH = '#f7f4ee'  // pergamino natural
+
 const ACCENT: Record<string, string> = {
-  executive:  '#1d4ed8',
+  executive:  NP_DARK,
   technical:  '#7c3aed',
   compliance: '#0f766e',
 }
@@ -152,6 +161,110 @@ function trunc(str: string, max: number) {
   return str.length > max ? str.slice(0, max) + '…' : str
 }
 
+// ─── SVG Chart Components ────────────────────────────────────────────────────
+
+function SeverityStackBar({ breakdown, total }: { breakdown: Record<string, number>; total: number }) {
+  const W = 460
+  const segs = [
+    { key: 'critical', c: '#dc2626', label: 'Crítico' },
+    { key: 'high',     c: '#d97706', label: 'Alto' },
+    { key: 'medium',   c: '#eab308', label: 'Medio' },
+    { key: 'low',      c: NP_MED,    label: 'Bajo' },
+    { key: 'info',     c: '#94a3b8', label: 'Info' },
+  ]
+  let xOff = 0
+  const rects = segs.map(({ key, c }) => {
+    const count = breakdown[key] ?? 0
+    const w = total > 0 ? Math.round((count / total) * W) : 0
+    const x = xOff; xOff += w
+    return { x, w, c, key }
+  }).filter(r => r.w > 0)
+
+  return (
+    <View style={{ marginBottom: 8 }}>
+      <Svg width={W} height={18}>
+        {rects.map((r, i) => (
+          <Rect key={i} x={r.x} y={0} width={r.w} height={18} fill={r.c}
+            rx={i === 0 ? 3 : i === rects.length - 1 ? 3 : 0} />
+        ))}
+      </Svg>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 5 }}>
+        {segs.map(({ key, c, label }) => {
+          const count = breakdown[key] ?? 0
+          const pct = total > 0 ? Math.round((count / total) * 100) : 0
+          return count > 0 ? (
+            <View key={key} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+              <View style={{ width: 8, height: 8, borderRadius: 2, backgroundColor: c }} />
+              <Text style={{ fontSize: 7, color: '#64748b' }}>{label}: {pct}% ({formatNum(count)})</Text>
+            </View>
+          ) : null
+        })}
+      </View>
+    </View>
+  )
+}
+
+function ThreatHorizBars({ threats, accent }: { threats: Array<{ name: string; count: number }>; accent: string }) {
+  if (!threats || threats.length === 0) return null
+  const top5 = threats.slice(0, 5)
+  const max = Math.max(...top5.map(t => t.count), 1)
+  const BAR_W = 220
+  return (
+    <View style={{ marginBottom: 8 }}>
+      {top5.map((t, i) => {
+        const w = Math.max(3, Math.round((t.count / max) * BAR_W))
+        return (
+          <View key={i} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 5, gap: 8 }}>
+            <Text style={{ fontSize: 7.5, color: '#0f172a', width: 170 }}>
+              {t.name.length > 28 ? t.name.slice(0, 28) + '…' : t.name}
+            </Text>
+            <Svg width={BAR_W} height={12}>
+              <Rect x={0} y={2} width={BAR_W} height={8} fill={`${accent}18`} rx={4} />
+              <Rect x={0} y={2} width={w}     height={8} fill={accent}         rx={4} />
+            </Svg>
+            <Text style={{ fontSize: 7.5, color: '#64748b', width: 38, textAlign: 'right' }}>
+              {formatNum(t.count)}
+            </Text>
+          </View>
+        )
+      })}
+    </View>
+  )
+}
+
+function DailyBarsChart({ data, color }: { data: Array<{ date: string; sessions: number }>; color: string }) {
+  if (!data || data.length === 0) return null
+  const max = Math.max(...data.map(d => d.sessions), 1)
+  const W = 460, H = 58
+  const gap = W / data.length
+  const barW = Math.max(3, gap - 2)
+  const step = data.length > 14 ? Math.ceil(data.length / 7) : 1
+  return (
+    <View style={{ marginBottom: 10 }}>
+      <Svg width={W} height={H}>
+        {[0.25, 0.5, 0.75, 1].map(f => (
+          <Line key={f} x1={0} y1={H * (1 - f)} x2={W} y2={H * (1 - f)}
+            stroke={`${color}28`} strokeWidth={0.5} />
+        ))}
+        {data.map((d, i) => {
+          const h = Math.max(2, Math.round((d.sessions / max) * H))
+          const x = i * gap + (gap - barW) / 2
+          return <Rect key={i} x={x} y={H - h} width={barW} height={h} fill={color} rx={1.5} />
+        })}
+      </Svg>
+      <View style={{ flexDirection: 'row', width: W, marginTop: 2 }}>
+        {data.map((d, i) => (
+          i % step === 0 ? (
+            <Text key={i} style={{ fontSize: 5.5, color: '#94a3b8', width: gap * step, textAlign: 'center' }}>
+              {d.date.slice(5)}
+            </Text>
+          ) : null
+        ))}
+      </View>
+    </View>
+  )
+}
+
 function parseAuditStatus(text: string): { status: string; color: string } {
   if (/CONFORME/i.test(text) && !/NO CONFORME/i.test(text)) return { status: 'CONFORME', color: GREEN }
   if (/NO CONFORME/i.test(text)) return { status: 'NO CONFORME', color: RED }
@@ -206,6 +319,17 @@ export function ReportPDF({ metrics, narrative, reportType, brandName, brandColo
     return (delta < 0) === lowerIsBetter ? GREEN : RED
   }
 
+  const NpSectionHeader = ({ title, subtitle }: { title: string; subtitle?: string }) => (
+    <View style={{ marginTop: 14, marginBottom: 10 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: subtitle ? 2 : 0 }}>
+        <View style={{ width: 3, height: 14, backgroundColor: NP_GOLD, borderRadius: 2 }} />
+        <Text style={{ fontSize: 10, fontFamily: 'Helvetica-Bold', color: NP_DARK }}>{title}</Text>
+      </View>
+      {subtitle ? <Text style={{ fontSize: 7.5, color: GRAY, marginLeft: 9, marginBottom: 2 }}>{subtitle}</Text> : null}
+      <View style={{ height: 0.75, backgroundColor: `${NP_MED}35`, marginTop: 5 }} />
+    </View>
+  )
+
   // ── Blank-page guards for technical report ──────────────────────────────
   const hasIntrusionContent = !!(
     (intrusion_top?.length) || (intrusion_not_blocked?.length) ||
@@ -257,12 +381,7 @@ export function ReportPDF({ metrics, narrative, reportType, brandName, brandColo
   }
 
   // ─── TOC items per report type ──────────────────────────────────────────
-  const tocItems = isExec ? [
-    { num: '01', label: 'Portada',                    desc: 'Identificación del reporte y período',           page: 1 },
-    { num: '02', label: 'Tabla de Contenido',         desc: 'Índice del documento',                          page: 2 },
-    { num: '03', label: 'Métricas del Período',       desc: 'KPIs ejecutivos, resumen e impacto al negocio', page: 3 },
-    { num: '04', label: 'Recomendaciones',            desc: 'Acciones prioritarias y distribución de severidad', page: 4 },
-  ] : isTech ? [
+  const tocItems = isTech ? [
     { num: '01', label: 'Portada',                    desc: 'Identificación del reporte y período',           page: 1 },
     { num: '02', label: 'Tabla de Contenido',         desc: 'Índice del documento',                          page: 2 },
     { num: '03', label: 'IPS / Intrusión',            desc: 'Top ataques, IPs origen, usuarios afectados',   page: 3 },
@@ -281,6 +400,340 @@ export function ReportPDF({ metrics, narrative, reportType, brandName, brandColo
   return (
     <Document title={`${TYPE_LABELS[reportType]} — ${orgName}`} author={logoText}>
 
+      {/* ══════════════════════════════════════════════════════
+          REPORTE EJECUTIVO — 5 páginas temáticas (Parques Nacionales)
+      ══════════════════════════════════════════════════════ */}
+      {isExec && (
+        <>
+          {/* PÁG 1: PORTADA ─────────────────────────────────── */}
+          <Page size="A4" style={[s.page, { backgroundColor: NP_PARCH }]}>
+            {/* Banda superior verde selva */}
+            <View style={{ height: 308, backgroundColor: NP_DARK, overflow: 'hidden', position: 'relative' }}>
+              {/* Silueta de montañas andinas */}
+              <Svg width={595} height={308} style={{ position: 'absolute', bottom: 0, left: 0 }}>
+                <Path d="M 0,308 L 0,228 L 72,182 L 142,222 L 208,152 L 280,200 L 342,132 L 414,178 L 476,112 L 542,158 L 595,98 L 595,308 Z"
+                  fill="rgba(255,255,255,0.04)" />
+                <Path d="M 0,308 L 0,258 L 58,238 L 118,254 L 178,208 L 248,238 L 308,192 L 378,224 L 438,182 L 508,210 L 595,172 L 595,308 Z"
+                  fill="rgba(255,255,255,0.06)" />
+              </Svg>
+              {/* Barra dorada izquierda */}
+              <View style={{ position: 'absolute', top: 0, left: 0, width: 5, height: '100%', backgroundColor: NP_GOLD }} />
+              <View style={{ paddingLeft: 52, paddingRight: 48, paddingTop: 40, paddingBottom: 26, flex: 1, justifyContent: 'space-between' }}>
+                {/* Marca */}
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                  {logoUrl ? <Image src={logoUrl} style={{ width: 42, height: 42, objectFit: 'contain' }} /> : null}
+                  <View>
+                    <Text style={{ fontSize: 23, fontFamily: 'Helvetica-Bold', color: WHITE }}>{logoText}</Text>
+                    <Text style={{ fontSize: 7.5, color: 'rgba(255,255,255,0.50)', marginTop: 2 }}>
+                      Plataforma de Análisis de Seguridad · BC Fabric SAS
+                    </Text>
+                  </View>
+                </View>
+                {/* Badge nivel de riesgo */}
+                {exec && (
+                  <View style={{ alignSelf: 'flex-start', borderRadius: 5, paddingVertical: 9, paddingHorizontal: 18, backgroundColor: riskColor, borderWidth: 1, borderColor: 'rgba(255,255,255,0.22)' }}>
+                    <Text style={{ fontSize: 6.5, color: 'rgba(255,255,255,0.62)', letterSpacing: 1.8, marginBottom: 3 }}>NIVEL DE RIESGO EVALUADO</Text>
+                    <Text style={{ fontSize: 27, fontFamily: 'Helvetica-Bold', color: WHITE }}>{exec.risk_level}</Text>
+                  </View>
+                )}
+                {/* Badge tipo reporte */}
+                <View style={{ borderRadius: 3, borderWidth: 1, borderColor: 'rgba(255,255,255,0.28)', alignSelf: 'flex-start', paddingVertical: 5, paddingHorizontal: 12, backgroundColor: 'rgba(255,255,255,0.07)' }}>
+                  <Text style={{ fontSize: 8, fontFamily: 'Helvetica-Bold', color: WHITE, letterSpacing: 2 }}>
+                    REPORTE EJECUTIVO DE SEGURIDAD
+                  </Text>
+                </View>
+              </View>
+            </View>
+
+            {/* Cuerpo blanco/pergamino */}
+            <View style={{ flex: 1, paddingLeft: 52, paddingRight: 48, paddingTop: 20 }}>
+              <Text style={{ fontSize: 20, fontFamily: 'Helvetica-Bold', color: NP_DARK }}>{orgName}</Text>
+              <View style={{ width: 30, height: 3, backgroundColor: NP_GOLD, marginTop: 7, borderRadius: 2 }} />
+              <Text style={{ fontSize: 8.5, color: GRAY, marginTop: 5, marginBottom: 16 }}>
+                Análisis de seguridad perimetral · {period.start} — {period.end} · {period.days} {period.days === 1 ? 'día' : 'días'}
+              </Text>
+              {/* KPI grid */}
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 7 }}>
+                {([
+                  { v: formatNum(summary.total_events),  l: 'EVENTOS PROCESADOS',     c: NP_DARK, d: trends?.total_events_delta_pct ?? null, lib: true,  unit: '%'  },
+                  { v: `${summary.block_rate_pct}%`,     l: 'EFECTIVIDAD DE BLOQUEO', c: summary.block_rate_pct >= 80 ? NP_MED : NP_GOLD, d: trends?.block_rate_delta_pts ?? null, lib: false, unit: ' pts' },
+                  { v: formatNum(summary.threat_events), l: 'AMENAZAS DETECTADAS',    c: RED,     d: trends?.threats_delta_pct ?? null,      lib: true,  unit: '%'  },
+                  { v: String(severity_breakdown['critical'] ?? 0), l: 'EVENTOS CRÍTICOS', c: severity_breakdown['critical'] > 0 ? RED : NP_MED, d: trends?.critical_delta_pct ?? null, lib: true, unit: '%' },
+                  { v: String(summary.active_devices),   l: 'ACTIVOS MONITOREADOS',   c: NP_WATER, d: null, lib: true, unit: '%' },
+                  ...(ipsecActiveCount > 0 ? [{ v: String(ipsecActiveCount), l: 'USUARIOS VPN IPSEC', c: NP_LIGHT, d: null, lib: true, unit: '%' }] : []),
+                ] as Array<{v:string;l:string;c:string;d:number|null;lib:boolean;unit:string}>).map((item, i) => (
+                  <View key={i} style={{ flex: 1, minWidth: '28%', borderRadius: 4, padding: '8 10', backgroundColor: `${item.c}12`, borderLeftWidth: 3, borderLeftColor: item.c }}>
+                    <Text style={{ fontSize: 16, fontFamily: 'Helvetica-Bold', color: item.c }}>{item.v}</Text>
+                    {item.d != null && (
+                      <Text style={{ fontSize: 5.5, color: trendClr(item.d, item.lib), marginTop: 1 }}>
+                        {trendTxt(item.d, item.unit)} vs período ant.
+                      </Text>
+                    )}
+                    <Text style={{ fontSize: 5.5, color: GRAY, marginTop: 2, letterSpacing: 0.4 }}>{item.l}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+
+            {/* Footer portada */}
+            <View style={{ paddingHorizontal: 48, paddingBottom: 20 }}>
+              <View style={{ height: 1, backgroundColor: LIGHT2, marginBottom: 9 }} />
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                <Text style={{ fontSize: 7.5, color: LGRAY }}>BC Fabric SAS</Text>
+                <Text style={{ fontSize: 7.5, color: LGRAY }}>Generado: {now}</Text>
+                <Text style={{ fontSize: 7.5, fontFamily: 'Helvetica-Bold', color: NP_DARK }}>CONFIDENCIAL</Text>
+              </View>
+            </View>
+          </Page>
+
+          {/* PÁG 2: ÍNDICE Y CONTEXTO ESTRATÉGICO ──────────── */}
+          <Page size="A4" style={[s.page, { backgroundColor: NP_PARCH }]}>
+            <View style={s.pageInner}>
+              <PageHeader subtitle={`Período: ${period.start} — ${period.end}`} />
+
+              {/* TOC */}
+              <View style={{ marginBottom: 18 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7, marginBottom: 12 }}>
+                  <View style={{ width: 4, height: 18, backgroundColor: NP_GOLD, borderRadius: 2 }} />
+                  <Text style={{ fontSize: 13, fontFamily: 'Helvetica-Bold', color: NP_DARK }}>Tabla de Contenido</Text>
+                </View>
+                {[
+                  { n: '01', t: 'Portada',                          d: 'Identificación del reporte, nivel de riesgo y métricas ejecutivas',              p: 1 },
+                  { n: '02', t: 'Índice y Contexto Estratégico',    d: 'Estructura del documento y resumen ejecutivo del período analizado',             p: 2 },
+                  { n: '03', t: 'Estado de Seguridad',              d: 'Indicadores clave, distribución de severidad y principales amenazas detectadas', p: 3 },
+                  { n: '04', t: 'Actividad del Período',            d: 'Comportamiento diario del tráfico, acceso VPN y hallazgos de seguridad',        p: 4 },
+                  { n: '05', t: 'Plan de Acción y Aprobaciones',    d: 'Recomendaciones estratégicas priorizadas y control ejecutivo',                  p: 5 },
+                ].map((item, i) => (
+                  <View key={i} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: `${NP_MED}22` }}>
+                    <View style={{ width: 26, height: 26, borderRadius: 13, backgroundColor: `${NP_MED}18`, alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+                      <Text style={{ fontSize: 8.5, fontFamily: 'Helvetica-Bold', color: NP_MED }}>{item.n}</Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 9.5, fontFamily: 'Helvetica-Bold', color: NP_DARK }}>{item.t}</Text>
+                      <Text style={{ fontSize: 7.5, color: GRAY, marginTop: 2 }}>{item.d}</Text>
+                    </View>
+                    <Text style={{ fontSize: 11, fontFamily: 'Helvetica-Bold', color: NP_MED, width: 22, textAlign: 'right' }}>{item.p}</Text>
+                  </View>
+                ))}
+              </View>
+
+              {/* Divider dorado */}
+              <View style={{ height: 1, backgroundColor: `${NP_GOLD}55`, marginBottom: 16 }} />
+
+              {/* Resumen estratégico */}
+              {exec && (
+                <>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                    <View style={{ width: 3, height: 16, backgroundColor: NP_GOLD, borderRadius: 2 }} />
+                    <Text style={{ fontSize: 11, fontFamily: 'Helvetica-Bold', color: NP_DARK }}>Contexto Estratégico</Text>
+                  </View>
+                  <Text style={{ fontSize: 9, lineHeight: 1.65, color: NP_DARK, marginBottom: 12 }}>{exec.executive_summary}</Text>
+                  <View style={{ borderLeftWidth: 3, borderLeftColor: NP_GOLD, padding: '10 13', backgroundColor: `${NP_GOLD}0e`, borderRadius: 3 }}>
+                    <Text style={{ fontSize: 7.5, fontFamily: 'Helvetica-Bold', color: NP_EARTH, letterSpacing: 0.5, marginBottom: 4 }}>
+                      IMPACTO OPERACIONAL Y DE NEGOCIO
+                    </Text>
+                    <Text style={{ fontSize: 9, lineHeight: 1.55, color: NP_DARK }}>{exec.business_impact}</Text>
+                  </View>
+                  <View style={{ marginTop: 12, padding: '8 12', backgroundColor: `${NP_MED}0a`, borderRadius: 3, borderLeftWidth: 2, borderLeftColor: `${NP_MED}60` }}>
+                    <Text style={{ fontSize: 7.5, color: GRAY, lineHeight: 1.4 }}>
+                      Documento generado automáticamente por {logoText} · {now} · Confidencial — uso interno exclusivo
+                    </Text>
+                  </View>
+                </>
+              )}
+            </View>
+            <Footer />
+          </Page>
+
+          {/* PÁG 3: ESTADO DE SEGURIDAD ─────────────────────── */}
+          <Page size="A4" style={[s.page, { backgroundColor: NP_PARCH }]}>
+            <View style={s.pageInner}>
+              <PageHeader subtitle={`Estado de Seguridad · ${period.start} — ${period.end}`} />
+
+              <NpSectionHeader title="Indicadores Clave de Rendimiento" subtitle={`${period.days} días bajo monitoreo continuo`} />
+              <View style={s.kpiGrid}>
+                {[
+                  { v: formatNum(summary.total_events),  l: 'Eventos procesados',     c: NP_DARK, d: trends?.total_events_delta_pct ?? null, lib: true,  unit: '%'  },
+                  { v: `${summary.block_rate_pct}%`,     l: 'Efectividad de bloqueo', c: summary.block_rate_pct >= 80 ? NP_MED : NP_GOLD, d: trends?.block_rate_delta_pts ?? null, lib: false, unit: ' pts' },
+                  { v: formatNum(summary.threat_events), l: 'Amenazas detectadas',    c: RED,     d: trends?.threats_delta_pct ?? null,      lib: true,  unit: '%'  },
+                  { v: String(severity_breakdown['critical'] ?? 0), l: 'Eventos críticos', c: severity_breakdown['critical'] > 0 ? RED : NP_MED, d: trends?.critical_delta_pct ?? null, lib: true, unit: '%' },
+                  { v: formatBytes(summary.bytes_total), l: 'Tráfico analizado',      c: NP_WATER, d: null, lib: true, unit: '%' },
+                  { v: String(summary.active_devices),   l: 'Activos monitoreados',   c: NP_LIGHT, d: null, lib: true, unit: '%' },
+                ].map((item, i) => (
+                  <View key={i} style={[s.kpiBox, { backgroundColor: `${item.c}0e`, borderLeftColor: item.c }]}>
+                    <Text style={[s.kpiValue, { color: item.c }]}>{item.v}</Text>
+                    {item.d != null && (
+                      <Text style={{ fontSize: 6, color: trendClr(item.d, item.lib), marginTop: 1 }}>
+                        {trendTxt(item.d, item.unit)} vs período anterior
+                      </Text>
+                    )}
+                    <Text style={s.kpiLabel}>{item.l}</Text>
+                  </View>
+                ))}
+              </View>
+
+              {/* VPN + país */}
+              {(ipsecActiveCount > 0 || topAttackCountry) && (
+                <View style={{ flexDirection: 'row', gap: 8, marginBottom: 4 }}>
+                  {ipsecActiveCount > 0 && (
+                    <View style={{ flex: 1, borderRadius: 4, padding: '8 12', backgroundColor: `${NP_WATER}12`, borderLeftWidth: 3, borderLeftColor: NP_WATER }}>
+                      <Text style={{ fontSize: 16, fontFamily: 'Helvetica-Bold', color: NP_WATER }}>{ipsecActiveCount}</Text>
+                      <Text style={{ fontSize: 6.5, color: GRAY, marginTop: 3, letterSpacing: 0.3 }}>USUARIOS VPN IPSEC CONECTADOS</Text>
+                    </View>
+                  )}
+                  {topAttackCountry && (
+                    <View style={{ flex: 2, borderRadius: 4, padding: '8 12', backgroundColor: `${RED}0e`, borderLeftWidth: 3, borderLeftColor: RED }}>
+                      <Text style={{ fontSize: 16, fontFamily: 'Helvetica-Bold', color: RED }}>{topAttackCountry}</Text>
+                      <Text style={{ fontSize: 6.5, color: GRAY, marginTop: 3, letterSpacing: 0.3 }}>PRINCIPAL ORIGEN GEOGRÁFICO DE ATAQUES</Text>
+                    </View>
+                  )}
+                </View>
+              )}
+
+              <NpSectionHeader title="Distribución de Severidad" subtitle="Proporción de eventos clasificados por nivel de criticidad" />
+              <SeverityStackBar breakdown={severity_breakdown} total={summary.total_events} />
+
+              {top_threats && top_threats.length > 0 && (
+                <>
+                  <NpSectionHeader title="Amenazas Más Frecuentes" subtitle="Top 5 por volumen de detecciones en el período" />
+                  <ThreatHorizBars threats={top_threats} accent={NP_DARK} />
+                </>
+              )}
+            </View>
+            <Footer />
+          </Page>
+
+          {/* PÁG 4: ACTIVIDAD DEL PERÍODO ───────────────────── */}
+          <Page size="A4" style={[s.page, { backgroundColor: NP_PARCH }]}>
+            <View style={s.pageInner}>
+              <PageHeader subtitle={`Actividad del Período · ${period.start} — ${period.end}`} />
+
+              {session_history && session_history.length > 0 && (
+                <>
+                  <NpSectionHeader
+                    title="Volumen de Actividad Diaria"
+                    subtitle={`Eventos procesados por día · pico máximo: ${formatNum(Math.max(...session_history.map(d => d.sessions)))} eventos`}
+                  />
+                  <DailyBarsChart data={session_history} color={NP_MED} />
+                </>
+              )}
+
+              {exec && exec.key_findings.length > 0 && (
+                <>
+                  <NpSectionHeader title="Hallazgos Prioritarios" subtitle="Situaciones identificadas que requieren atención de la dirección" />
+                  {exec.key_findings.map((f, i) => (
+                    <View key={i} style={{ flexDirection: 'row', marginBottom: 7 }}>
+                      <View style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: `${NP_MED}18`, alignItems: 'center', justifyContent: 'center', marginRight: 9, flexShrink: 0, marginTop: 1 }}>
+                        <Text style={{ fontSize: 8, fontFamily: 'Helvetica-Bold', color: NP_MED }}>{i + 1}</Text>
+                      </View>
+                      <Text style={{ flex: 1, fontSize: 9, lineHeight: 1.52, color: NP_DARK }}>{f}</Text>
+                    </View>
+                  ))}
+                </>
+              )}
+
+              {top_blocked_ips && top_blocked_ips.length > 0 && (
+                <>
+                  <NpSectionHeader title="Fuentes con Mayor Reincidencia Bloqueada" subtitle="Direcciones IP externas con mayor volumen de intentos denegados" />
+                  <View style={s.table}>
+                    <View style={[s.tHead, { backgroundColor: NP_DARK }]}>
+                      <Text style={[s.tHeadText, { flex: 3 }]}>Dirección IP origen</Text>
+                      <Text style={[s.tHeadText, { flex: 1 }]}>Bloqueos</Text>
+                      <Text style={[s.tHeadText, { flex: 2 }]}>Estado del control</Text>
+                    </View>
+                    {top_blocked_ips.slice(0, 6).map((row, i) => (
+                      <View key={i} style={[i % 2 === 0 ? s.tRow : s.tRowAlt, i % 2 !== 0 ? { backgroundColor: `${NP_MED}08` } : {}]}>
+                        <Text style={[s.tCell, { flex: 3, fontFamily: 'Courier' }]}>{row.ip}</Text>
+                        <Text style={[s.tCell, { flex: 1, color: RED, fontFamily: 'Helvetica-Bold' }]}>{formatNum(row.count)}</Text>
+                        <Text style={[s.tCell, { flex: 2, color: NP_MED }]}>Control activo — bloqueado</Text>
+                      </View>
+                    ))}
+                  </View>
+                </>
+              )}
+            </View>
+            <Footer />
+          </Page>
+
+          {/* PÁG 5: PLAN DE ACCIÓN Y APROBACIONES ──────────── */}
+          <Page size="A4" style={[s.page, { backgroundColor: NP_PARCH }]}>
+            <View style={s.pageInner}>
+              <PageHeader subtitle="Plan de Acción y Control Ejecutivo" />
+
+              {exec && exec.recommendations.length > 0 && (
+                <>
+                  <NpSectionHeader title="Recomendaciones Estratégicas" subtitle="Acciones priorizadas para fortalecer la postura de seguridad organizacional" />
+                  {exec.recommendations.map((rec, i) => {
+                    const priority = i === 0
+                      ? { label: 'ACCIÓN INMEDIATA', c: RED }
+                      : i <= 1
+                        ? { label: 'CORTO PLAZO', c: NP_GOLD }
+                        : { label: 'ESTRATÉGICO',  c: NP_MED }
+                    return (
+                      <View key={i} style={{ marginBottom: 9, borderRadius: 4, borderWidth: 1, borderColor: `${priority.c}28`, backgroundColor: `${priority.c}07`, padding: '9 12' }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 5 }}>
+                          <View style={{ borderRadius: 3, paddingVertical: 2, paddingHorizontal: 7, backgroundColor: priority.c }}>
+                            <Text style={{ fontSize: 6.5, fontFamily: 'Helvetica-Bold', color: WHITE, letterSpacing: 1 }}>{priority.label}</Text>
+                          </View>
+                          <Text style={{ fontSize: 7.5, color: GRAY }}>
+                            Recomendación {i + 1} de {exec.recommendations.length}
+                          </Text>
+                        </View>
+                        <Text style={{ fontSize: 9, lineHeight: 1.5, color: NP_DARK }}>{rec}</Text>
+                      </View>
+                    )
+                  })}
+                </>
+              )}
+
+              <NpSectionHeader title="Resumen de Criticidad del Período" subtitle="Distribución proporcional de eventos por nivel de severidad" />
+              {(['critical', 'high', 'medium', 'low'] as const).map(sev => {
+                const count = severity_breakdown[sev] ?? 0
+                const pct = summary.total_events > 0 ? Math.round((count / summary.total_events) * 100) : 0
+                const color = sev === 'critical' ? RED : sev === 'high' ? AMBER : sev === 'medium' ? '#eab308' : NP_MED
+                const labels: Record<string, string> = { critical: 'Crítico', high: 'Alto', medium: 'Medio', low: 'Bajo' }
+                return (
+                  <View key={sev} style={s.sevRow}>
+                    <Text style={[s.sevLabel, { color }]}>{labels[sev]}</Text>
+                    <View style={s.sevBarBg}>
+                      <View style={[s.sevBarFill, { width: `${pct}%`, backgroundColor: color }]} />
+                    </View>
+                    <Text style={s.sevCount}>{formatNum(count)} ({pct}%)</Text>
+                  </View>
+                )
+              })}
+
+              <View style={{ marginTop: 20 }}>
+                <NpSectionHeader title="Aprobación y Control Ejecutivo" subtitle="Constancia de revisión, validación y autorización del presente informe de seguridad" />
+                {[
+                  { role: 'Gerente General / CEO', desc: 'Validación de postura de seguridad y autorización del plan de acción' },
+                  { role: 'CISO / Director de Seguridad Informática', desc: 'Revisión técnica, estratégica y cumplimiento de políticas de seguridad' },
+                ].map((signer, i) => (
+                  <View key={i} style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 22 }}>
+                    <View style={{ flex: 2 }}>
+                      <Text style={{ fontSize: 8, fontFamily: 'Helvetica-Bold', color: NP_DARK, marginBottom: 3 }}>{signer.role}</Text>
+                      <Text style={{ fontSize: 7.5, color: GRAY, marginBottom: 14 }}>{signer.desc}</Text>
+                      <View style={{ height: 1, backgroundColor: LIGHT2, width: '85%' }} />
+                      <Text style={{ fontSize: 7, color: LGRAY, marginTop: 3 }}>Nombre, cargo y firma</Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 8, color: GRAY, marginBottom: 18 }}>Fecha de aprobación</Text>
+                      <View style={{ height: 1, backgroundColor: LIGHT2, width: '70%' }} />
+                    </View>
+                  </View>
+                ))}
+              </View>
+            </View>
+            <Footer />
+          </Page>
+        </>
+      )}
+
+      {/* ══════════════════════════════════════════════════════
+          PORTADA GENÉRICA (técnico / cumplimiento)
+      ══════════════════════════════════════════════════════ */}
+      {!isExec && (
+        <>
       {/* ══════════════════════════════════════════════════════
           PORTADA
       ══════════════════════════════════════════════════════ */}
@@ -400,140 +853,6 @@ export function ReportPDF({ metrics, narrative, reportType, brandName, brandColo
         </View>
         <Footer />
       </Page>
-
-      {/* ══════════════════════════════════════════════════════
-          REPORTE EJECUTIVO — Páginas 3 y 4
-      ══════════════════════════════════════════════════════ */}
-      {isExec && (
-        <>
-          {/* Pg 3: KPIs + Resumen ejecutivo + Hallazgos */}
-          <Page size="A4" style={s.page}>
-            <View style={s.pageInner}>
-              <PageHeader subtitle={`Período: ${period.start} — ${period.end}`} />
-
-              <View style={s.section}>
-                <SectionTitle>{`Métricas del período (${period.days} ${period.days === 1 ? 'día' : 'días'})`}</SectionTitle>
-                <View style={s.kpiGrid}>
-                  {[
-                    { v: formatNum(summary.total_events),   l: 'Eventos totales',             c: acc,  d: trends?.total_events_delta_pct ?? null, lib: true,  unit: '%' },
-                    { v: `${summary.block_rate_pct}%`,      l: 'Tasa de bloqueo',             c: RED,  d: trends?.block_rate_delta_pts ?? null,   lib: false, unit: ' pts' },
-                    { v: formatNum(summary.threat_events),  l: 'Amenazas detectadas',         c: AMBER,d: trends?.threats_delta_pct ?? null,      lib: true,  unit: '%' },
-                    { v: String(severity_breakdown['critical'] ?? 0), l: 'Eventos críticos',  c: severity_breakdown['critical'] > 0 ? RED : GREEN, d: trends?.critical_delta_pct ?? null, lib: true, unit: '%' },
-                    { v: formatBytes(summary.bytes_total),  l: 'Tráfico analizado',           c: DARK, d: null, lib: true, unit: '%' },
-                    { v: String(summary.active_devices),    l: 'Dispositivos activos',        c: GREEN,d: null, lib: true, unit: '%' },
-                  ].map((item, i) => (
-                    <View key={i} style={[s.kpiBox, { backgroundColor: `${item.c}0e`, borderLeftColor: item.c }]}>
-                      <Text style={[s.kpiValue, { color: item.c }]}>{item.v}</Text>
-                      {item.d != null && (
-                        <Text style={{ fontSize: 6, color: trendClr(item.d, item.lib), marginTop: 1 }}>
-                          {trendTxt(item.d, item.unit)} vs período anterior
-                        </Text>
-                      )}
-                      <Text style={s.kpiLabel}>{item.l}</Text>
-                    </View>
-                  ))}
-                </View>
-
-                {/* VPN activos + país de ataque */}
-                {(ipsecActiveCount > 0 || topAttackCountry) && (
-                  <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
-                    {ipsecActiveCount > 0 && (
-                      <View style={{ flex: 1, borderRadius: 4, padding: '8 12', backgroundColor: '#0891b210', borderLeftWidth: 3, borderLeftColor: '#0891b2' }}>
-                        <Text style={{ fontSize: 16, fontFamily: 'Helvetica-Bold', color: '#0891b2' }}>{ipsecActiveCount}</Text>
-                        <Text style={{ fontSize: 6.5, color: GRAY, marginTop: 3, letterSpacing: 0.3 }}>USUARIOS VPN IPSEC ACTIVOS AHORA</Text>
-                      </View>
-                    )}
-                    {topAttackCountry && (
-                      <View style={{ flex: 2, borderRadius: 4, padding: '8 12', backgroundColor: `${RED}10`, borderLeftWidth: 3, borderLeftColor: RED }}>
-                        <Text style={{ fontSize: 16, fontFamily: 'Helvetica-Bold', color: RED }}>{topAttackCountry}</Text>
-                        <Text style={{ fontSize: 6.5, color: GRAY, marginTop: 3, letterSpacing: 0.3 }}>PAÍS DE ORIGEN PRINCIPAL DE ATAQUES</Text>
-                      </View>
-                    )}
-                  </View>
-                )}
-              </View>
-
-              {exec && (
-                <View style={s.section}>
-                  <SectionTitle>Resumen Ejecutivo</SectionTitle>
-                  <Text style={s.bodyText}>{exec.executive_summary}</Text>
-                  <View style={[s.recBox, { borderLeftColor: acc, backgroundColor: `${acc}08` }]}>
-                    <Text style={[s.recNumber, { color: acc }]}>Impacto al negocio</Text>
-                    <Text style={s.recText}>{exec.business_impact}</Text>
-                  </View>
-                </View>
-              )}
-
-              {exec && exec.key_findings.length > 0 && (
-                <View style={s.section}>
-                  <SectionTitle>Hallazgos Clave</SectionTitle>
-                  {exec.key_findings.map((f, i) => (
-                    <View key={i} style={s.listItem}>
-                      <Text style={[s.bullet, { color: acc }]}>→</Text>
-                      <Text style={s.listText}>{f}</Text>
-                    </View>
-                  ))}
-                </View>
-              )}
-            </View>
-            <Footer />
-          </Page>
-
-          {/* Pg 4: Recomendaciones + Firmas + Severidad */}
-          <Page size="A4" style={s.page}>
-            <View style={s.pageInner}>
-              <PageHeader subtitle="Recomendaciones estratégicas" />
-
-              {exec && exec.recommendations.length > 0 && (
-                <View style={s.section}>
-                  <SectionTitle>Recomendaciones Estratégicas</SectionTitle>
-                  {exec.recommendations.map((rec, i) => (
-                    <View key={i} style={[s.recBox, { borderLeftColor: acc, backgroundColor: `${acc}08` }]}>
-                      <Text style={[s.recNumber, { color: acc }]}>Recomendación {i + 1}</Text>
-                      <Text style={s.recText}>{rec}</Text>
-                    </View>
-                  ))}
-                </View>
-              )}
-
-              <View style={s.section}>
-                <SectionTitle>Distribución de Severidad</SectionTitle>
-                {(['critical', 'high', 'medium', 'low'] as const).map(sev => {
-                  const count = severity_breakdown[sev] ?? 0
-                  const pct = summary.total_events > 0 ? Math.round((count / summary.total_events) * 100) : 0
-                  const color = sev === 'critical' ? RED : sev === 'high' ? AMBER : sev === 'medium' ? '#eab308' : acc
-                  const labels: Record<string, string> = { critical: 'Crítico', high: 'Alto', medium: 'Medio', low: 'Bajo' }
-                  return (
-                    <View key={sev} style={s.sevRow}>
-                      <Text style={[s.sevLabel, { color }]}>{labels[sev]}</Text>
-                      <View style={s.sevBarBg}>
-                        <View style={[s.sevBarFill, { width: `${pct}%`, backgroundColor: color }]} />
-                      </View>
-                      <Text style={s.sevCount}>{formatNum(count)} ({pct}%)</Text>
-                    </View>
-                  )
-                })}
-              </View>
-
-              <View style={[s.section, { marginTop: 16 }]}>
-                <SectionTitle>Aprobación Ejecutiva</SectionTitle>
-                {[{ role: 'Gerente General / CEO' }, { role: 'CISO / Director de Seguridad' }].map((signer, i) => (
-                  <View key={i} style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 18 }}>
-                    <View style={{ flex: 2 }}>
-                      <Text style={{ fontSize: 8, color: GRAY, marginBottom: 16 }}>{signer.role}</Text>
-                      <View style={{ height: 1, backgroundColor: LIGHT2, width: '80%' }} />
-                      <Text style={{ fontSize: 7, color: LGRAY, marginTop: 3 }}>Nombre y firma</Text>
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={{ fontSize: 8, color: GRAY, marginBottom: 16 }}>Fecha</Text>
-                      <View style={{ height: 1, backgroundColor: LIGHT2, width: '60%' }} />
-                    </View>
-                  </View>
-                ))}
-              </View>
-            </View>
-            <Footer />
-          </Page>
         </>
       )}
 

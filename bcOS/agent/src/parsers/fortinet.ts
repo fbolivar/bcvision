@@ -20,8 +20,8 @@ function parseKV(msg: string): Record<string, string> {
 
 function mapAction(action: string | undefined): EventAction | null {
   const map: Record<string, EventAction> = {
-    accept: 'allow', allow: 'allow',
-    deny: 'deny', block: 'deny',
+    accept: 'allow', allow: 'allow', passthrough: 'allow',
+    deny: 'deny', block: 'deny', blocked: 'deny',
     drop: 'drop', reset: 'reset',
     monitor: 'monitor', redirect: 'redirect',
     // VPN-specific actions

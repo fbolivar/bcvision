@@ -99,7 +99,8 @@ export function RecentEventsTable({ events }: Props) {
           <tbody>
             {events.map((event, i) => {
               const sev = severityConfig[event.severity] ?? severityConfig.info
-              const ac  = actionConfig[event.action ?? ''] ?? { label: event.action ?? '—', color: 'text-[#64748b]' }
+              const rawAction = event.action ?? (pd?.['action'] as string | undefined) ?? ''
+              const ac  = actionConfig[rawAction] ?? { label: rawAction || '—', color: 'text-[#64748b]' }
               const pd  = event.parsed_data as Record<string, unknown> | null
               const subtype = pd?.['subtype'] as string | undefined
               const typeLabel = subtype

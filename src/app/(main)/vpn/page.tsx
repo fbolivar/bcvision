@@ -1,15 +1,18 @@
 import { createClient } from '@/lib/supabase/server'
 import { Topbar } from '@/shared/components/topbar'
+import { TimeFilter } from '@/shared/components/time-filter'
+import { resolveHours } from '@/shared/lib/time'
 import { LiveRefresh } from '@/shared/components/live-refresh'
 import { getVpnStats, getVpnUsers, getVpnSessions, getVpnFailedLogins, getVpnActiveSessions } from '@/features/vpn/services/vpn.service'
 import { formatBytes, formatNumber } from '@/shared/lib/utils'
 import { Shield, Users, Wifi, AlertTriangle, Clock, XCircle, Radio } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
+interface PageProps { searchParams: Promise<Record<string, string>> }
 
-export default async function VpnPage() {
-  const hours = 24
-  const label = 'últimas 24h'
+export default async function VpnPage({ searchParams }: PageProps) {
+  const sp = await searchParams
+  const { hours, isLive, param, label } = resolveHours(sp['hours'], 24)
 
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -33,10 +36,16 @@ export default async function VpnPage() {
 
   return (
     <div className="flex flex-col flex-1 min-h-0">
-      <LiveRefresh enabled={false} />
+      <LiveRefresh enabled={isLive} />
       <Topbar title="VPN y Acceso Remoto" subtitle={`${stats.total_sessions} sesiones · ${label}`} />
 
       <div className="flex-1 p-6 space-y-5 overflow-y-auto mesh-bg">
+
+        {/* Time filter */}
+        <div className="flex items-center justify-between">
+          <span className="text-xs text-[#334155] font-medium">Período de análisis</span>
+          <TimeFilter current={param} />
+        </div>
 
         {/* Conectados ahora — IPsec */}
         {activeSessions.length > 0 && (

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { renderToBuffer } from '@react-pdf/renderer'
 import { ReportPDF } from '@/features/reports/pdf/report-template'
+import { VpnReportPDF } from '@/features/reports/pdf/vpn-report'
 import type { ReportMetrics } from '@/features/reports/services/metrics-aggregator'
 import type { GeneratedReport } from '@/features/reports/services/claude-report.service'
 import React from 'react'
@@ -42,14 +43,20 @@ export async function GET(
       ai_narrative: GeneratedReport | null
     }
 
-    const element = React.createElement(ReportPDF, {
-      metrics:    content.metrics,
-      narrative:  content.ai_narrative,
-      reportType: report.type as string,
-      brandName:  orgSettings?.brand_name,
-      brandColor: orgSettings?.brand_color,
-      logoUrl:    orgSettings?.logo_url,
-    })
+    const element = report.type === 'vpn_users'
+      ? React.createElement(VpnReportPDF, {
+          metrics:    content.metrics,
+          brandName:  orgSettings?.brand_name,
+          brandColor: orgSettings?.brand_color,
+        })
+      : React.createElement(ReportPDF, {
+          metrics:    content.metrics,
+          narrative:  content.ai_narrative,
+          reportType: report.type as string,
+          brandName:  orgSettings?.brand_name,
+          brandColor: orgSettings?.brand_color,
+          logoUrl:    orgSettings?.logo_url,
+        })
 
     const buffer = await renderToBuffer(element as React.ReactElement<{ title?: string }>)
     const filename = `reporte-${report.type}-${report.period_start}-${report.period_end}.pdf`

@@ -6,7 +6,7 @@ import { aggregateReportMetrics } from '@/features/reports/services/metrics-aggr
 import { generateExecutiveReport } from '@/features/reports/services/claude-report.service'
 
 const schema = z.object({
-  type:         z.enum(['executive', 'technical', 'compliance']),
+  type:         z.enum(['executive', 'technical', 'compliance', 'vpn_users']),
   period_start: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   period_end:   z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   title:        z.string().min(3).max(120).optional(),
@@ -40,7 +40,8 @@ export async function POST(request: Request) {
     }
 
     const { type, period_start, period_end, title } = parsed.data
-    const reportTitle = title ?? `Reporte ${type === 'executive' ? 'Ejecutivo' : type === 'technical' ? 'Técnico' : 'de Cumplimiento'} — ${period_start} al ${period_end}`
+    const TYPE_NAMES: Record<string, string> = { executive: 'Ejecutivo', technical: 'Técnico', compliance: 'de Cumplimiento', vpn_users: 'Usuarios VPN' }
+    const reportTitle = title ?? `Reporte ${TYPE_NAMES[type] ?? type} — ${period_start} al ${period_end}`
 
     // 1. Crear registro del reporte en estado "generating"
     const admin = adminClient()
@@ -75,12 +76,12 @@ export async function POST(request: Request) {
 
     // 3. Generar narrativa con Claude (si hay API key configurada)
     let aiContent = null
-    if (process.env.ANTHROPIC_API_KEY) {
+    const AI_TYPES = ['executive', 'technical', 'compliance'] as const
+    if (process.env.ANTHROPIC_API_KEY && (AI_TYPES as readonly string[]).includes(type)) {
       try {
-        aiContent = await generateExecutiveReport(metrics, type)
+        aiContent = await generateExecutiveReport(metrics, type as typeof AI_TYPES[number])
       } catch (err) {
         console.error('[Reports] Error Claude API:', err)
-        // No falla el reporte, continúa sin narrativa IA
       }
     }
 

@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { FileText, Loader2, Sparkles, Calendar } from 'lucide-react'
 
-type ReportType = 'executive' | 'technical' | 'compliance'
+type ReportType = 'executive' | 'technical' | 'compliance' | 'vpn_users'
 
 interface GenerateResult {
   report_id: string
@@ -58,9 +58,10 @@ export function ReportGenerator({ onGenerated }: Props) {
   }
 
   const types: { value: ReportType; label: string; desc: string }[] = [
-    { value: 'executive', label: 'Ejecutivo', desc: 'Para dirección y gerencia. Lenguaje claro, orientado a decisiones.' },
-    { value: 'technical', label: 'Técnico', desc: 'Para equipo IT y SOC. Detalles de amenazas, IPs y protocolos.' },
-    { value: 'compliance', label: 'Cumplimiento', desc: 'Para auditoría y regulatorio. Retención de logs y controles.' },
+    { value: 'executive',  label: 'Ejecutivo',      desc: 'Para dirección y gerencia. Lenguaje claro, orientado a decisiones.' },
+    { value: 'technical',  label: 'Técnico',         desc: 'Para equipo IT y SOC. Detalles de amenazas, IPs y protocolos.' },
+    { value: 'compliance', label: 'Cumplimiento',    desc: 'Para auditoría y regulatorio. Retención de logs y controles.' },
+    { value: 'vpn_users',  label: 'Usuarios VPN',   desc: 'Detalle de sesiones y tráfico por usuario de VPN. Sin IA.' },
   ]
 
   return (
@@ -81,7 +82,7 @@ export function ReportGenerator({ onGenerated }: Props) {
           <label className="block text-xs font-medium text-[#9ca3af] uppercase tracking-wider mb-2">
             Tipo de Reporte
           </label>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 gap-3">
             {types.map(t => (
               <button
                 key={t.value}

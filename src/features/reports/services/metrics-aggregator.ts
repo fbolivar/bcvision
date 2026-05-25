@@ -108,7 +108,7 @@ export async function aggregateReportMetrics(
   const end   = new Date(periodEnd + 'T23:59:59').toISOString()
   const days  = Math.max(1, Math.round((new Date(end).getTime() - new Date(start).getTime()) / 86_400_000))
 
-  const [orgRes, eventsRes, devicesRes, criticalRes, vpnDetailRes] = await Promise.all([
+  const [orgRes, eventsRes, devicesRes, criticalRes, vpnDetailRes, vpnActiveRes, vpnLogRes] = await Promise.all([
     supabase.from('organizations').select('name, plan').eq('id', orgId).single(),
     supabase.from('firewall_events')
       .select('event_type,action,severity,protocol,src_ip,dst_ip,dst_port,src_country,dst_country,user_name,application,bytes_sent,bytes_received,threat_name,threat_category,event_time')
@@ -124,7 +124,7 @@ export async function aggregateReportMetrics(
       .lte('event_time', end)
       .order('event_time', { ascending: false })
       .limit(10),
-    // VPN detail query with parsed_data for tunnel type, group, and action
+    // VPN firewall_events (ataques / fallos)
     supabase.from('firewall_events')
       .select('user_name,src_ip,src_country,action,bytes_sent,bytes_received,event_time,parsed_data')
       .eq('org_id', orgId)
@@ -132,6 +132,18 @@ export async function aggregateReportMetrics(
       .gte('event_time', start)
       .lte('event_time', end)
       .limit(20000),
+    // Sesiones IPSEC activas actuales (desde agente FortiGate)
+    supabase.from('vpn_active_sessions')
+      .select('user_name,remote_ip,tunnel_ip,duration_sec,bytes_tx,bytes_rx,tunnel_type,last_seen')
+      .eq('org_id', orgId)
+      .gt('bytes_tx', 0),   // solo usuarios reales con tráfico
+    // Historial de sesiones IPSEC en el período
+    supabase.from('vpn_session_log')
+      .select('user_name,remote_ip,tunnel_name,duration_sec,bytes_tx,bytes_rx,tunnel_type,snapshot_at')
+      .eq('org_id', orgId)
+      .gte('snapshot_at', start)
+      .lte('snapshot_at', end)
+      .limit(50000),
   ])
 
   const events  = eventsRes.data  ?? []
@@ -340,6 +352,74 @@ export async function aggregateReportMetrics(
         if ((e.event_time as string) > vpnUserMap[e.user_name].last_seen)
           vpnUserMap[e.user_name].last_seen = e.event_time as string
       }
+    }
+  }
+
+  // ── Sesiones IPSEC activas (desde vpn_active_sessions) ───────
+  // Usuarios reales del directorio activo conectados vía IPSEC
+  const activeSessions = (vpnActiveRes.data ?? [])
+    .filter(s => {
+      const u = (s.user_name as string ?? '').toLowerCase()
+      // filtrar túneles site-to-site y entradas sin usuario real
+      return u && !['n/a', 'ipsec_users', 'ipsec_users_ems', 'alterno_sede_a', 'gcp_google', 'ecomil'].includes(u)
+        && !u.startsWith('ipsec_users_')
+    })
+
+  for (const s of activeSessions) {
+    const u = s.user_name as string
+    if (!vpnUserMap[u]) {
+      vpnUserMap[u] = {
+        ip:            (s.tunnel_ip as string | null) ?? (s.remote_ip as string | null) ?? null,
+        first_used:    s.last_seen as string,
+        last_seen:     s.last_seen as string,
+        sessions:      1,
+        failed:        0,
+        bytes_sent:    Number(s.bytes_tx) ?? 0,
+        bytes_received: Number(s.bytes_rx) ?? 0,
+        tunnel_type:   s.tunnel_type as string | null ?? 'ipsec',
+        vpn_group:     null,
+      }
+    } else {
+      vpnUserMap[u].bytes_sent     = Math.max(vpnUserMap[u].bytes_sent,     Number(s.bytes_tx) ?? 0)
+      vpnUserMap[u].bytes_received = Math.max(vpnUserMap[u].bytes_received, Number(s.bytes_rx) ?? 0)
+      vpnUserMap[u].last_seen      = s.last_seen as string
+    }
+  }
+
+  // ── Historial de sesiones IPSEC del período (vpn_session_log) ─
+  const vpnLogEntries = (vpnLogRes.data ?? [])
+    .filter(s => {
+      const u = (s.user_name as string ?? '').toLowerCase()
+      return u && !u.startsWith('ipsec_users_') && !['n/a','ipsec_users','ipsec_users_ems','alterno_sede_a','gcp_google','ecomil'].includes(u)
+    })
+
+  for (const s of vpnLogEntries) {
+    const u   = s.user_name as string
+    const txB = Number(s.bytes_tx) ?? 0
+    const rxB = Number(s.bytes_rx) ?? 0
+    const dateKey = (s.snapshot_at as string).slice(0, 10)
+    if (!vpnDailyMap[dateKey]) vpnDailyMap[dateKey] = { sessions: 0, users: new Set(), bytes: 0 }
+    vpnDailyMap[dateKey].users.add(u)
+    vpnDailyMap[dateKey].bytes += txB + rxB
+
+    if (!vpnUserMap[u]) {
+      vpnUserMap[u] = {
+        ip:             (s.remote_ip as string | null) ?? null,
+        first_used:     s.snapshot_at as string,
+        last_seen:      s.snapshot_at as string,
+        sessions:       1,
+        failed:         0,
+        bytes_sent:     txB,
+        bytes_received: rxB,
+        tunnel_type:    s.tunnel_type as string | null ?? 'ipsec',
+        vpn_group:      null,
+      }
+    } else {
+      vpnUserMap[u].sessions++
+      vpnUserMap[u].bytes_sent     = Math.max(vpnUserMap[u].bytes_sent,     txB)
+      vpnUserMap[u].bytes_received = Math.max(vpnUserMap[u].bytes_received, rxB)
+      if ((s.snapshot_at as string) < vpnUserMap[u].first_used) vpnUserMap[u].first_used = s.snapshot_at as string
+      if ((s.snapshot_at as string) > vpnUserMap[u].last_seen)  vpnUserMap[u].last_seen  = s.snapshot_at as string
     }
   }
 

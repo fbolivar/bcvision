@@ -23,11 +23,13 @@ export async function getUserActivity(orgId: string, hours = 24): Promise<UserAc
 
   const { data } = await supabase
     .from('firewall_events')
-    .select('user_name, bytes_sent, bytes_received, action, event_time, url')
+    .select('user_name, bytes_sent, bytes_received, action, event_time, url, parsed_data')
     .eq('org_id', orgId)
     .gte('event_time', since)
     .not('user_name', 'is', null)
     .order('event_time', { ascending: false })
+
+  const BLOCKED_ACTIONS = new Set(['deny', 'drop', 'block', 'blocked', 'reset'])
 
   const userMap: Record<string, UserActivity> = {}
 
@@ -46,7 +48,9 @@ export async function getUserActivity(orgId: string, hours = 24): Promise<UserAc
     const u = userMap[name]
     u.event_count++
     u.bytes_total += (row.bytes_sent ?? 0) + (row.bytes_received ?? 0)
-    if (row.action === 'deny' || row.action === 'drop') u.blocked_count++
+    const pd = row.parsed_data as Record<string, unknown> | null
+    const effectiveAction = (row.action ?? (pd?.['action'] as string | undefined) ?? '').toLowerCase()
+    if (BLOCKED_ACTIONS.has(effectiveAction)) u.blocked_count++
     if (!u.top_url && row.url) u.top_url = row.url
   }
 
@@ -59,11 +63,13 @@ export async function getTopSourceIps(orgId: string, hours = 24, limit = 20): Pr
 
   const { data } = await supabase
     .from('firewall_events')
-    .select('src_ip, bytes_sent, bytes_received, action, event_time')
+    .select('src_ip, bytes_sent, bytes_received, action, event_time, parsed_data')
     .eq('org_id', orgId)
     .gte('event_time', since)
     .not('src_ip', 'is', null)
     .order('event_time', { ascending: false })
+
+  const BLOCKED_ACTIONS = new Set(['deny', 'drop', 'block', 'blocked', 'reset'])
 
   const ipMap: Record<string, IpActivity> = {}
 
@@ -75,7 +81,9 @@ export async function getTopSourceIps(orgId: string, hours = 24, limit = 20): Pr
     const entry = ipMap[ip]
     entry.event_count++
     entry.bytes_total += (row.bytes_sent ?? 0) + (row.bytes_received ?? 0)
-    if (row.action === 'deny' || row.action === 'drop') entry.blocked_count++
+    const pd = row.parsed_data as Record<string, unknown> | null
+    const effectiveAction = (row.action ?? (pd?.['action'] as string | undefined) ?? '').toLowerCase()
+    if (BLOCKED_ACTIONS.has(effectiveAction)) entry.blocked_count++
   }
 
   return Object.values(ipMap)

@@ -120,5 +120,67 @@ export async function POST(req: NextRequest) {
     .update({ last_seen: new Date().toISOString() })
     .eq('id', keyRecord.id)
 
+  // ── Auto-create alert (solo amenazas accionables) ───────────────
+  const ev = d.event
+  const isNamedThreat   = ev.event_type === 'threat' && !!ev.threat_name
+  const isMalwareBotnet = ['malware', 'botnet', 'virus'].includes(ev.threat_category ?? '')
+  const isAuthFail      = ev.event_type === 'auth' && ev.action === 'deny'
+  const isVpnFail       = ev.event_type === 'vpn'  && ev.action === 'deny'
+
+  const shouldAlert = isNamedThreat || isMalwareBotnet || isAuthFail || isVpnFail
+
+  if (shouldAlert) {
+    // Deduplicar: si ya existe alerta abierta del mismo threat + IP en la última hora, no crear otra
+    const oneHourAgo = new Date(Date.now() - 3_600_000).toISOString()
+    const { count } = await supabase
+      .from('alerts')
+      .select('id', { count: 'exact', head: true })
+      .eq('org_id', orgId)
+      .eq('status', 'open')
+      .gte('created_at', oneHourAgo)
+      .eq('title',
+        ev.threat_name
+          ? `${ev.threat_name}${ev.src_ip ? ` desde ${ev.src_ip}` : ''}`
+          : ev.event_type === 'vpn'
+          ? `Fallo VPN desde ${ev.src_ip ?? ''}`
+          : `Fallo de autenticacion desde ${ev.src_ip ?? ''}`
+      )
+
+    if ((count ?? 0) === 0) {
+      const { data: savedEvent } = await supabase
+        .from('firewall_events')
+        .select('id')
+        .eq('org_id', orgId)
+        .eq('event_time', d.received_at)
+        .order('id', { ascending: false })
+        .limit(1)
+        .single()
+
+      const title = ev.threat_name
+        ? `${ev.threat_name}${ev.src_ip ? ` desde ${ev.src_ip}` : ''}`
+        : ev.event_type === 'vpn'
+        ? `Fallo VPN desde ${ev.src_ip ?? 'desconocido'}`
+        : `Fallo de autenticacion desde ${ev.src_ip ?? 'desconocido'}`
+
+      const description = [
+        ev.threat_category ? `Categoria: ${ev.threat_category}` : null,
+        ev.src_ip && ev.dst_ip ? `${ev.src_ip} → ${ev.dst_ip}` : null,
+        ev.src_country ? `Pais origen: ${ev.src_country}` : null,
+        ev.firewall_rule ? `Regla: ${ev.firewall_rule}` : null,
+      ].filter(Boolean).join(' | ')
+
+      await supabase.from('alerts').insert({
+        org_id:      orgId,
+        device_id:   deviceId ?? null,
+        event_id:    savedEvent?.id ?? null,
+        type:        ev.threat_category ?? ev.event_type,
+        title,
+        description: description || null,
+        severity:    ev.severity,
+        status:      'open',
+      })
+    }
+  }
+
   return NextResponse.json({ ok: true })
 }

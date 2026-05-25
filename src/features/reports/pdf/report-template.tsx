@@ -175,6 +175,7 @@ export function ReportPDF({ metrics, narrative, reportType, brandName, brandColo
     users_hit_malware, users_hit_adware, users_hit_spyware, botnet_sources, phishing_users,
     top_apps_blocked, proxy_users, top_apps_by_category, vpn_ssl_users, vpn_failed_logins,
     session_history, traffic_stats,
+    trends, ipsec_active_count, top_attack_country,
   } = metrics
 
   const acc       = brandColor ?? ACCENT[reportType] ?? ACCENT.executive
@@ -192,6 +193,18 @@ export function ReportPDF({ metrics, narrative, reportType, brandName, brandColo
 
   const riskColors: Record<string, string> = { BAJO: GREEN, MEDIO: AMBER, ALTO: RED, CRÍTICO: RED }
   const riskColor = exec ? (riskColors[exec.risk_level] ?? GRAY) : acc
+
+  const ipsecActiveCount = ipsec_active_count ?? 0
+  const topAttackCountry = top_attack_country ?? null
+
+  function trendTxt(delta: number | null | undefined, unit = '%'): string {
+    if (delta == null) return ''
+    return `${delta > 0 ? '↑' : '↓'} ${Math.abs(delta)}${unit}`
+  }
+  function trendClr(delta: number | null | undefined, lowerIsBetter = true): string {
+    if (delta == null || delta === 0) return GRAY
+    return (delta < 0) === lowerIsBetter ? GREEN : RED
+  }
 
   // ── Blank-page guards for technical report ──────────────────────────────
   const hasIntrusionContent = !!(
@@ -307,17 +320,24 @@ export function ReportPDF({ metrics, narrative, reportType, brandName, brandColo
 
           {/* KPI mini-cards */}
           <View style={s.coverKpiGrid}>
-            {[
-              { v: formatNum(summary.total_events),   l: 'EVENTOS TOTALES',    c: acc },
-              { v: `${summary.block_rate_pct}%`,      l: 'TASA DE BLOQUEO',    c: summary.block_rate_pct >= 80 ? GREEN : AMBER },
-              { v: String(summary.active_devices),    l: 'DISPOSITIVOS',       c: DARK },
-              { v: formatBytes(summary.bytes_total),  l: 'TRÁFICO ANALIZADO',  c: DARK },
-            ].map((item, i) => (
-              <View key={i} style={[s.coverKpiCard, { backgroundColor: `${item.c}0e`, borderLeftColor: item.c }]}>
-                <Text style={[s.coverKpiValue, { color: item.c }]}>{item.v}</Text>
-                <Text style={s.coverKpiLabel}>{item.l}</Text>
-              </View>
-            ))}
+            {([
+              { v: formatNum(summary.total_events),  l: 'EVENTOS TOTALES',   c: acc,  d: trends?.total_events_delta_pct ?? null, lib: true,  unit: '%' },
+              { v: `${summary.block_rate_pct}%`,     l: 'TASA DE BLOQUEO',   c: summary.block_rate_pct >= 80 ? GREEN : AMBER, d: trends?.block_rate_delta_pts ?? null, lib: false, unit: ' pts' },
+              { v: String(summary.active_devices),   l: 'DISPOSITIVOS',      c: DARK, d: null, lib: true,  unit: '%' },
+              { v: formatBytes(summary.bytes_total), l: 'TRÁFICO ANALIZADO', c: DARK, d: null, lib: true,  unit: '%' },
+            ] as Array<{ v: string; l: string; c: string; d: number | null; lib: boolean; unit: string }>)
+              .concat(isExec && ipsecActiveCount > 0 ? [{ v: String(ipsecActiveCount), l: 'USUARIOS VPN IPSEC', c: '#0891b2', d: null, lib: true, unit: '%' }] : [])
+              .map((item, i) => (
+                <View key={i} style={[s.coverKpiCard, { backgroundColor: `${item.c}0e`, borderLeftColor: item.c }]}>
+                  <Text style={[s.coverKpiValue, { color: item.c }]}>{item.v}</Text>
+                  {item.d != null && (
+                    <Text style={{ fontSize: 6, color: trendClr(item.d, item.lib), marginTop: 1 }}>
+                      {trendTxt(item.d, item.unit)} vs ant.
+                    </Text>
+                  )}
+                  <Text style={s.coverKpiLabel}>{item.l}</Text>
+                </View>
+              ))}
           </View>
 
           {/* Period info */}
@@ -395,19 +415,42 @@ export function ReportPDF({ metrics, narrative, reportType, brandName, brandColo
                 <SectionTitle>{`Métricas del período (${period.days} ${period.days === 1 ? 'día' : 'días'})`}</SectionTitle>
                 <View style={s.kpiGrid}>
                   {[
-                    { v: formatNum(summary.total_events),   l: 'Eventos totales',             c: acc },
-                    { v: formatNum(summary.blocked_events), l: `Bloqueados (${summary.block_rate_pct}%)`, c: RED },
-                    { v: formatNum(summary.threat_events),  l: 'Amenazas detectadas',          c: AMBER },
-                    { v: String(severity_breakdown['critical'] ?? 0), l: 'Eventos críticos',  c: severity_breakdown['critical'] > 0 ? RED : GREEN },
-                    { v: formatBytes(summary.bytes_total),  l: 'Tráfico analizado',            c: DARK },
-                    { v: String(summary.active_devices),    l: 'Dispositivos activos',         c: GREEN },
+                    { v: formatNum(summary.total_events),   l: 'Eventos totales',             c: acc,  d: trends?.total_events_delta_pct ?? null, lib: true,  unit: '%' },
+                    { v: `${summary.block_rate_pct}%`,      l: 'Tasa de bloqueo',             c: RED,  d: trends?.block_rate_delta_pts ?? null,   lib: false, unit: ' pts' },
+                    { v: formatNum(summary.threat_events),  l: 'Amenazas detectadas',         c: AMBER,d: trends?.threats_delta_pct ?? null,      lib: true,  unit: '%' },
+                    { v: String(severity_breakdown['critical'] ?? 0), l: 'Eventos críticos',  c: severity_breakdown['critical'] > 0 ? RED : GREEN, d: trends?.critical_delta_pct ?? null, lib: true, unit: '%' },
+                    { v: formatBytes(summary.bytes_total),  l: 'Tráfico analizado',           c: DARK, d: null, lib: true, unit: '%' },
+                    { v: String(summary.active_devices),    l: 'Dispositivos activos',        c: GREEN,d: null, lib: true, unit: '%' },
                   ].map((item, i) => (
                     <View key={i} style={[s.kpiBox, { backgroundColor: `${item.c}0e`, borderLeftColor: item.c }]}>
                       <Text style={[s.kpiValue, { color: item.c }]}>{item.v}</Text>
+                      {item.d != null && (
+                        <Text style={{ fontSize: 6, color: trendClr(item.d, item.lib), marginTop: 1 }}>
+                          {trendTxt(item.d, item.unit)} vs período anterior
+                        </Text>
+                      )}
                       <Text style={s.kpiLabel}>{item.l}</Text>
                     </View>
                   ))}
                 </View>
+
+                {/* VPN activos + país de ataque */}
+                {(ipsecActiveCount > 0 || topAttackCountry) && (
+                  <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
+                    {ipsecActiveCount > 0 && (
+                      <View style={{ flex: 1, borderRadius: 4, padding: '8 12', backgroundColor: '#0891b210', borderLeftWidth: 3, borderLeftColor: '#0891b2' }}>
+                        <Text style={{ fontSize: 16, fontFamily: 'Helvetica-Bold', color: '#0891b2' }}>{ipsecActiveCount}</Text>
+                        <Text style={{ fontSize: 6.5, color: GRAY, marginTop: 3, letterSpacing: 0.3 }}>USUARIOS VPN IPSEC ACTIVOS AHORA</Text>
+                      </View>
+                    )}
+                    {topAttackCountry && (
+                      <View style={{ flex: 2, borderRadius: 4, padding: '8 12', backgroundColor: `${RED}10`, borderLeftWidth: 3, borderLeftColor: RED }}>
+                        <Text style={{ fontSize: 16, fontFamily: 'Helvetica-Bold', color: RED }}>{topAttackCountry}</Text>
+                        <Text style={{ fontSize: 6.5, color: GRAY, marginTop: 3, letterSpacing: 0.3 }}>PAÍS DE ORIGEN PRINCIPAL DE ATAQUES</Text>
+                      </View>
+                    )}
+                  </View>
+                )}
               </View>
 
               {exec && (

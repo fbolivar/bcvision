@@ -24,6 +24,11 @@ function riskLevel(sev: string): number {
   return ({ critical: 5, high: 4, medium: 3, low: 2, info: 1 } as Record<string, number>)[sev] ?? 2
 }
 
+function deltaPct(curr: number, prev: number): number | null {
+  if (prev === 0) return null
+  return Math.round(((curr - prev) / prev) * 100)
+}
+
 export interface ReportMetrics {
   period: { start: string; end: string; days: number }
   organization: { name: string; plan: string }
@@ -67,6 +72,14 @@ export interface ReportMetrics {
   vpn_failed_logins: Array<{ user: string; type: string; count: number; unique_ips: number }>
   vpn_daily: Array<{ date: string; sessions: number; active_users: number; bytes: number; failed: number }>
   vpn_attack_ips: Array<{ ip: string; count: number; country: string | null }>
+  ipsec_active_count: number
+  top_attack_country: string | null
+  trends: {
+    total_events_delta_pct: number | null
+    threats_delta_pct: number | null
+    critical_delta_pct: number | null
+    block_rate_delta_pts: number | null
+  } | null
 
   // Timeline
   session_history: Array<{ date: string; sessions: number }>
@@ -108,7 +121,11 @@ export async function aggregateReportMetrics(
   const end   = new Date(periodEnd + 'T23:59:59').toISOString()
   const days  = Math.max(1, Math.round((new Date(end).getTime() - new Date(start).getTime()) / 86_400_000))
 
-  const [orgRes, eventsRes, devicesRes, criticalRes, vpnDetailRes, vpnActiveRes, vpnLogRes] = await Promise.all([
+  const durationMs = new Date(end).getTime() - new Date(start).getTime()
+  const prevEnd   = new Date(new Date(start).getTime() - 1).toISOString()
+  const prevStart = new Date(new Date(start).getTime() - durationMs - 1).toISOString()
+
+  const [orgRes, eventsRes, devicesRes, criticalRes, vpnDetailRes, vpnActiveRes, vpnLogRes, prevEventsRes] = await Promise.all([
     supabase.from('organizations').select('name, plan').eq('id', orgId).single(),
     supabase.from('firewall_events')
       .select('event_type,action,severity,protocol,src_ip,dst_ip,dst_port,src_country,dst_country,user_name,application,bytes_sent,bytes_received,threat_name,threat_category,event_time')
@@ -144,6 +161,13 @@ export async function aggregateReportMetrics(
       .gte('snapshot_at', start)
       .lte('snapshot_at', end)
       .limit(50000),
+    // Eventos del período anterior (tendencias)
+    supabase.from('firewall_events')
+      .select('action, severity, event_type')
+      .eq('org_id', orgId)
+      .gte('event_time', prevStart)
+      .lte('event_time', prevEnd)
+      .limit(20000),
   ])
 
   const events  = eventsRes.data  ?? []
@@ -423,6 +447,35 @@ export async function aggregateReportMetrics(
     }
   }
 
+  // ── Tendencias vs período anterior ───────────────────────────────────
+  const prevEvData   = prevEventsRes.data ?? []
+  const prevTotal    = prevEvData.length
+  const prevBlocked  = prevEvData.filter(e => e.action === 'deny' || e.action === 'drop').length
+  const prevThreats  = prevEvData.filter(e => e.event_type === 'threat').length
+  const prevCritical = prevEvData.filter(e => e.severity === 'critical').length
+  const prevBlockRate = prevTotal > 0 ? Math.round((prevBlocked / prevTotal) * 100) : 0
+  const currBlockRate = total > 0 ? Math.round((blocked / total) * 100) : 0
+  const trends = prevTotal > 0 ? {
+    total_events_delta_pct: deltaPct(total,   prevTotal),
+    threats_delta_pct:      deltaPct(threats, prevThreats),
+    critical_delta_pct:     deltaPct(severity_breakdown['critical'] ?? 0, prevCritical),
+    block_rate_delta_pts:   currBlockRate - prevBlockRate,
+  } : null
+
+  // ── IPSEC usuarios activos en este momento ────────────────────────────
+  const ipsec_active_count = activeSessions.length
+
+  // ── País principal de origen de ataques ──────────────────────────────
+  const vpnCountryMap: Record<string, number> = {}
+  for (const v of Object.values(vpnAttackIpMap)) {
+    if (v.country) vpnCountryMap[v.country] = (vpnCountryMap[v.country] ?? 0) + v.count
+  }
+  const combinedCountryMap: Record<string, number> = { ...vpnCountryMap }
+  for (const [c, n] of Object.entries(attackSrcCountryMap)) {
+    combinedCountryMap[c] = (combinedCountryMap[c] ?? 0) + n
+  }
+  const top_attack_country = Object.entries(combinedCountryMap).sort((a, b) => b[1] - a[1])[0]?.[0] ?? null
+
   // ── Fecha más activa ──────────────────────────────────────
   const mostActiveDate = Object.entries(dailyMap)
     .sort((a, b) => b[1] - a[1])[0]?.[0] ?? periodStart
@@ -511,6 +564,9 @@ export async function aggregateReportMetrics(
     vpn_attack_ips: Object.entries(vpnAttackIpMap)
       .map(([ip, v]) => ({ ip, count: v.count, country: v.country }))
       .sort((a, b) => b.count - a.count).slice(0, 25),
+    ipsec_active_count,
+    top_attack_country,
+    trends,
 
     // Timeline
     session_history: sessionHistory,

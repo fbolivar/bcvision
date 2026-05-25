@@ -1,5 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { Topbar } from '@/shared/components/topbar'
+import { TimeFilter } from '@/shared/components/time-filter'
+import { resolveHours } from '@/shared/lib/time'
 import { LiveRefresh } from '@/shared/components/live-refresh'
 import { TrafficFilters } from '@/features/traffic/components/traffic-filters'
 import { RecentEventsTable } from '@/features/dashboard/components/recent-events-table'
@@ -12,8 +14,7 @@ interface PageProps { searchParams: Promise<Record<string, string>> }
 
 export default async function TrafficPage({ searchParams }: PageProps) {
   const sp = await searchParams
-  const hours = 24
-  const label = 'últimas 24h'
+  const { hours, isLive, param, label } = resolveHours(sp['hours'], 24)
   const page      = parseInt(sp['page'] ?? '1', 10)
   const PAGE_SIZE = 50
   const from      = new Date(Date.now() - hours * 3_600_000).toISOString()
@@ -34,13 +35,14 @@ export default async function TrafficPage({ searchParams }: PageProps) {
 
   return (
     <div className="flex flex-col flex-1 min-h-0">
-      <LiveRefresh enabled={false} />
+      <LiveRefresh enabled={isLive} />
       <Topbar title="Tráfico de red" subtitle={`${total.toLocaleString()} eventos · ${label}`} />
 
       <div className="flex-1 p-6 space-y-4 overflow-y-auto mesh-bg">
 
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <TrafficFilters />
+          <TimeFilter current={param} />
         </div>
 
         <div className="glass rounded-2xl overflow-hidden">

@@ -1,5 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { Topbar } from '@/shared/components/topbar'
+import { TimeFilter } from '@/shared/components/time-filter'
+import { resolveHours } from '@/shared/lib/time'
 import { LiveRefresh } from '@/shared/components/live-refresh'
 import { getAppStats, getTopApplications, getBlockedApplications, getTopProxyUsers } from '@/features/applications/services/applications.service'
 import { formatBytes, formatNumber } from '@/shared/lib/utils'
@@ -7,9 +9,11 @@ import { AppWindow, Ban, Users, Database, ShieldX } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
 
-export default async function ApplicationsPage() {
-  const hours = 24
-  const label = 'últimas 24h'
+interface PageProps { searchParams: Promise<Record<string, string>> }
+
+export default async function ApplicationsPage({ searchParams }: PageProps) {
+  const sp = await searchParams
+  const { hours, isLive, param, label } = resolveHours(sp['hours'], 24)
 
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -32,10 +36,15 @@ export default async function ApplicationsPage() {
 
   return (
     <div className="flex flex-col flex-1 min-h-0">
-      <LiveRefresh enabled={false} />
+      <LiveRefresh enabled={isLive} />
       <Topbar title="Control de Aplicaciones" subtitle={`${stats.total_applications} apps detectadas · ${label}`} />
 
       <div className="flex-1 p-6 space-y-5 overflow-y-auto mesh-bg">
+
+        <div className="flex items-center justify-between">
+          <span className="text-xs text-[#334155] font-medium">Período de análisis</span>
+          <TimeFilter current={param} />
+        </div>
 
         {/* Stats */}
         <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">

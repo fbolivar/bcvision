@@ -1,5 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { Topbar } from '@/shared/components/topbar'
+import { TimeFilter } from '@/shared/components/time-filter'
+import { resolveHours } from '@/shared/lib/time'
 import { LiveRefresh } from '@/shared/components/live-refresh'
 import { AlertCard } from '@/features/alerts/components/alert-card'
 import { getAlerts } from '@/features/alerts/services/alerts-server.service'
@@ -18,8 +20,7 @@ const STATUS_TABS: { value: AlertStatus | 'all'; label: string; color: string }[
 
 export default async function AlertsPage({ searchParams }: PageProps) {
   const sp = await searchParams
-  const hours = 24
-  const label = 'últimas 24h'
+  const { hours, isLive, param, label } = resolveHours(sp['hours'], 24)
   const status = sp['status'] as AlertStatus | undefined
 
   const supabase = await createClient()
@@ -38,10 +39,15 @@ export default async function AlertsPage({ searchParams }: PageProps) {
 
   return (
     <div className="flex flex-col flex-1 min-h-0">
-      <LiveRefresh enabled={false} />
+      <LiveRefresh enabled={isLive} />
       <Topbar title="Alertas de seguridad" subtitle={`${alerts.length} alerta${alerts.length !== 1 ? 's' : ''} · ${label}`} />
 
       <div className="flex-1 p-6 space-y-5 overflow-y-auto mesh-bg">
+
+        <div className="flex items-center justify-between">
+          <span className="text-xs text-[#334155] font-medium">Período de análisis</span>
+          <TimeFilter current={param} />
+        </div>
 
         {/* Critical banner */}
         {(critical > 0 || high > 0) && (

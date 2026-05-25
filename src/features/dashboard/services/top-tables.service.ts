@@ -104,7 +104,7 @@ export async function getUserIpTable(orgId: string, hours = 24): Promise<UserIpR
 
     const result = Array.from(map.values())
       .sort((a, b) => b.sessions - a.sessions)
-      .slice(0, 10)
+      .slice(0, 5)
 
     if (result.length > 0) return result
   }

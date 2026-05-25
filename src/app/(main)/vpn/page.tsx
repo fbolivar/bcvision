@@ -47,14 +47,14 @@ export default async function VpnPage() {
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-[#22c55e]" />
               </span>
               <Radio className="w-3.5 h-3.5 text-[#22c55e]" />
-              <h2 className="font-bold text-white text-sm">Conectados ahora · IPsec</h2>
-              <span className="ml-auto text-[10px] font-bold text-[#22c55e] bg-[#22c55e]/10 border border-[#22c55e]/20 px-2 py-0.5 rounded-full">{activeSessions.length} usuarios</span>
+              <h2 className="font-bold text-white text-sm">Túneles activos · IPsec</h2>
+              <span className="ml-auto text-[10px] font-bold text-[#22c55e] bg-[#22c55e]/10 border border-[#22c55e]/20 px-2 py-0.5 rounded-full">{activeSessions.length} túneles</span>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-xs">
                 <thead>
                   <tr className="border-b border-[#0a1628]">
-                    {['Usuario', 'IP Remota', 'IP Túnel', 'Duración', 'Transferido'].map(h => (
+                    {['Túnel', 'IP Remota', 'IP Túnel', 'Duración', 'Transferido'].map(h => (
                       <th key={h} className="px-5 py-2.5 text-left font-bold text-[#1e3a5f] uppercase tracking-widest whitespace-nowrap">{h}</th>
                     ))}
                   </tr>

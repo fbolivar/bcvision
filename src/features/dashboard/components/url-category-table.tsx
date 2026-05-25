@@ -7,7 +7,7 @@ interface Props {
 }
 
 export function UrlCategoryTable({ data }: Props) {
-  const maxTraffic = data[0]?.traffic ?? 1
+  const maxSessions = data.reduce((m, r) => Math.max(m, r.sessions), 1)
 
   return (
     <div className="glass rounded-2xl overflow-hidden">
@@ -16,7 +16,7 @@ export function UrlCategoryTable({ data }: Props) {
         <div className="w-1 h-4 rounded-full bg-gradient-to-b from-[#06b6d4] to-[#0891b2]" />
         <Globe className="w-4 h-4 text-[#06b6d4]" />
         <h2 className="font-bold text-white text-sm flex-1">Tráfico por Categorías de URL</h2>
-        <span className="text-[10px] font-bold text-[#334155] uppercase tracking-wider">Top {data.length} · 24h</span>
+        <span className="text-[10px] font-bold text-[#334155] uppercase tracking-wider">Top {data.length} categorías</span>
       </div>
 
       {data.length === 0 ? (
@@ -46,7 +46,7 @@ export function UrlCategoryTable({ data }: Props) {
             </thead>
             <tbody>
               {data.map((row, i) => {
-                const pct = maxTraffic > 0 ? (row.traffic / maxTraffic) * 100 : 0
+                const pct = maxSessions > 0 ? (row.sessions / maxSessions) * 100 : 0
                 const rankColor = i === 0 ? '#f59e0b' : i === 1 ? '#94a3b8' : i === 2 ? '#b45309' : '#334155'
                 return (
                   <tr key={row.category} className="border-b border-[#0a1628] last:border-0 hover:bg-[#060d1a]/60 transition-colors group">

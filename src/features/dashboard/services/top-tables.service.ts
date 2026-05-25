@@ -29,33 +29,42 @@ const EVENT_LABELS: Record<string, string> = {
 
 export async function getUrlCategoryTable(orgId: string, hours = 24): Promise<UrlCategoryRow[]> {
   const supabase = await createClient()
-  const since = new Date(Date.now() - hours * 3600_000).toISOString()
 
-  const { data } = await supabase
-    .from('firewall_events')
-    .select('event_type, threat_category, bytes_sent, bytes_received, user_name')
-    .eq('org_id', orgId)
-    .gte('event_time', since)
-    .limit(10000)
+  // Try requested period first; fall back to 7 days if no webfilter data
+  for (const lookbackHours of [hours, Math.max(hours, 168)]) {
+    const since = new Date(Date.now() - lookbackHours * 3600_000).toISOString()
 
-  const map = new Map<string, { traffic: number; sessions: number; users: Set<string> }>()
+    const { data } = await supabase
+      .from('firewall_events')
+      .select('parsed_data, bytes_sent, bytes_received, user_name')
+      .eq('org_id', orgId)
+      .gte('event_time', since)
+      .not('parsed_data', 'is', null)
+      .limit(10000)
 
-  for (const row of data ?? []) {
-    const cat = row.threat_category
-      ? String(row.threat_category)
-      : (EVENT_LABELS[row.event_type] ?? row.event_type ?? 'Desconocido')
+    const map = new Map<string, { traffic: number; sessions: number; users: Set<string> }>()
 
-    const existing = map.get(cat) ?? { traffic: 0, sessions: 0, users: new Set() }
-    existing.traffic  += (row.bytes_sent ?? 0) + (row.bytes_received ?? 0)
-    existing.sessions += 1
-    if (row.user_name) existing.users.add(row.user_name)
-    map.set(cat, existing)
+    for (const row of data ?? []) {
+      const pd = row.parsed_data as Record<string, unknown> | null
+      const catdesc = pd?.['catdesc'] as string | undefined
+      if (!catdesc || catdesc === 'Unrated' || catdesc === 'Unknown') continue
+
+      const existing = map.get(catdesc) ?? { traffic: 0, sessions: 0, users: new Set() }
+      existing.traffic  += (row.bytes_sent ?? 0) + (row.bytes_received ?? 0)
+      existing.sessions += 1
+      if (row.user_name) existing.users.add(row.user_name)
+      map.set(catdesc, existing)
+    }
+
+    if (map.size > 0) {
+      return Array.from(map.entries())
+        .map(([category, v]) => ({ category, traffic: v.traffic, sessions: v.sessions, users: v.users.size }))
+        .sort((a, b) => b.sessions - a.sessions)
+        .slice(0, 8)
+    }
   }
 
-  return Array.from(map.entries())
-    .map(([category, v]) => ({ category, traffic: v.traffic, sessions: v.sessions, users: v.users.size }))
-    .sort((a, b) => b.traffic - a.traffic)
-    .slice(0, 5)
+  return []
 }
 
 export async function getUserIpTable(orgId: string, hours = 24): Promise<UserIpRow[]> {

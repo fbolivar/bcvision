@@ -70,8 +70,13 @@ async function processMessage(raw: string, sourceIp: string) {
   try {
     saveEvent(syslogMsg, event, brand)
     msgSaved++
-    if (event.severity === 'critical' || event.severity === 'high') {
-      console.log(`[bcOS] 🚨 ${brand} | ${sourceIp} | ${event.event_type} | ${event.severity}`)
+    const pd = event.parsed_data as Record<string, unknown> | undefined
+    const catdesc = pd?.['catdesc'] as string | undefined
+    const isWebfilterCat = pd?.['subtype'] === 'webfilter'
+      && catdesc && catdesc !== 'Unrated' && catdesc !== 'Unknown'
+    if (event.severity === 'critical' || event.severity === 'high' || isWebfilterCat) {
+      if (event.severity === 'critical' || event.severity === 'high')
+        console.log(`[bcOS] 🚨 ${brand} | ${sourceIp} | ${event.event_type} | ${event.severity}`)
       const cfg = getConfig()
       if (cfg.bcvision_url && cfg.bcvision_api_key) {
         forwardEvent(cfg, syslogMsg, event).catch(err =>

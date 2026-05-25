@@ -1,6 +1,6 @@
 {
   "name": "bcos-agent",
-  "version": "1.0.0",
+  "version": "1.2.0",
   "description": "bcOS syslog agent — local SQLite storage + aggregated sync to BCVision",
   "main": "dist/index.js",
   "scripts": {

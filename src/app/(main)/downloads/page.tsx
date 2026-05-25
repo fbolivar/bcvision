@@ -35,13 +35,32 @@ export default async function DownloadsPage() {
             <div className="flex items-center gap-2 mb-1">
               <h2 className="text-lg font-bold text-white">bcOS — Syslog Agent</h2>
               <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#3b82f6]/10 text-[#3b82f6] border border-[#3b82f6]/20">
-                v1.7.0
+                v1.2.0
               </span>
             </div>
             <p className="text-sm text-[#64748b] mb-4">
               Virtual appliance basado en Alpine Linux. Recibe Syslog de tus firewalls y reenvía los eventos a BCVision.
               Sin configuración de Linux — web UI incluida en el puerto 80.
             </p>
+
+            {/* Changelog */}
+            <div className="mb-5 p-3 bg-[#060a12] rounded-xl border border-[#0f2038]">
+              <div className="text-[10px] text-[#475569] font-bold uppercase tracking-wider mb-2">Novedades v1.2.0</div>
+              <ul className="space-y-1">
+                {[
+                  'FortiGate IPSEC: sesiones activas enviadas cada 60s a BCVision',
+                  'Acciones FortiGate: dropped y clear_session ahora mapeadas correctamente',
+                  'VPN tunnel_name incluido para identificar túneles por nombre',
+                  'Fix: duration_sec usa directamente creation_time (segundos activos)',
+                  'Nuevas acciones VPN: tunnel-up/down, ssl-login-fail, ike-failed',
+                ].map(item => (
+                  <li key={item} className="flex items-start gap-1.5 text-[11px] text-[#64748b]">
+                    <span className="text-[#3b82f6] mt-px flex-shrink-0">·</span>
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            </div>
 
             <div className="grid grid-cols-3 gap-3 mb-5">
               {[

@@ -4,6 +4,7 @@ export interface FgVpnSession {
   user_name:    string
   remote_ip:    string
   tunnel_ip:    string
+  tunnel_name:  string
   duration_sec: number
   bytes_tx:     number
   bytes_rx:     number
@@ -32,25 +33,26 @@ export async function fetchActiveIpsecVpnSessions(cfg: AgentConfig): Promise<FgV
   const data = await res.json() as { results?: Record<string, unknown>[] }
   const results = data.results ?? []
 
-  const nowSec = Math.floor(Date.now() / 1000)
-
   return results
     .filter(r => r['name'])
     .map(r => {
-      const createdAt = Number(r['creation_time'] ?? r['created'] ?? 0)
+      // creation_time en FortiGate IPSEC monitor es la duración en segundos de la sesión activa
+      const durationSec = Number(r['creation_time'] ?? r['created'] ?? 0)
       const isDialup = r['type'] === 'dialup'
       // dialup = client VPN con usuario autenticado; automatic = site-to-site sin usuario
       const userName = isDialup
         ? String(r['user'] ?? r['username'] ?? r['name'] ?? '')
         : String(r['name'] ?? '')
+      const tunnelName = String(r['name'] ?? '')
       return {
         user_name:    userName,
         remote_ip:    String(r['rgwy'] ?? r['remote_gateway'] ?? r['remip'] ?? ''),
         tunnel_ip:    String(r['tun_id'] ?? r['tun_ip'] ?? r['tunnel_ip'] ?? ''),
-        duration_sec: createdAt > 0 ? Math.max(0, nowSec - createdAt) : 0,
+        tunnel_name:  tunnelName,
+        duration_sec: durationSec,
         bytes_tx:     Number(r['outgoing_bytes'] ?? r['bytes_tx'] ?? 0),
         bytes_rx:     Number(r['incoming_bytes']  ?? r['bytes_rx'] ?? 0),
-        os_name:      String(r['name'] ?? ''),
+        os_name:      tunnelName,
         tunnel_type:  'ipsec',
       }
     })

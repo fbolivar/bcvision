@@ -13,12 +13,36 @@ const severityConfig: Record<string, { dot: string; text: string; bg: string }> 
   info:     { dot: 'bg-[#64748b]', text: 'text-[#94a3b8]', bg: 'bg-[#64748b]/10 border border-[#64748b]/25' },
 }
 
-const actionConfig: Record<string, string> = {
-  allow:   'text-[#4ade80]',
-  deny:    'text-[#f87171]',
-  drop:    'text-[#f87171]',
-  reset:   'text-[#fbbf24]',
-  monitor: 'text-[#60a5fa]',
+const EVENT_TYPE_LABELS: Record<string, string> = {
+  traffic:  'Tráfico',
+  threat:   'Amenaza',
+  vpn:      'VPN',
+  system:   'Sistema',
+  auth:     'Autenticación',
+  block:    'Bloqueado',
+  nat:      'NAT',
+}
+
+const SUBTYPE_LABELS: Record<string, string> = {
+  webfilter:  'Web Filter',
+  'app-ctrl': 'App Control',
+  ips:        'IPS',
+  virus:      'Antivirus',
+  anomaly:    'Anomalía',
+  vpn:        'VPN',
+  system:     'Sistema',
+  user:       'Usuario',
+  ha:         'Alta Disp.',
+}
+
+const actionConfig: Record<string, { label: string; color: string }> = {
+  allow:       { label: 'Permitido',   color: 'text-[#4ade80]' },
+  deny:        { label: 'Denegado',    color: 'text-[#f87171]' },
+  drop:        { label: 'Descartado',  color: 'text-[#f87171]' },
+  reset:       { label: 'Reset',       color: 'text-[#fbbf24]' },
+  monitor:     { label: 'Monitor',     color: 'text-[#60a5fa]' },
+  redirect:    { label: 'Redirigido',  color: 'text-[#a78bfa]' },
+  passthrough: { label: 'Permitido',   color: 'text-[#4ade80]' },
 }
 
 function RuleBadge({ rule }: { rule: string | null }) {
@@ -75,7 +99,12 @@ export function RecentEventsTable({ events }: Props) {
           <tbody>
             {events.map((event, i) => {
               const sev = severityConfig[event.severity] ?? severityConfig.info
-              const ac  = actionConfig[event.action ?? ''] ?? 'text-[#64748b]'
+              const ac  = actionConfig[event.action ?? ''] ?? { label: event.action ?? '—', color: 'text-[#64748b]' }
+              const pd  = event.parsed_data as Record<string, unknown> | null
+              const subtype = pd?.['subtype'] as string | undefined
+              const typeLabel = subtype
+                ? (SUBTYPE_LABELS[subtype] ?? subtype)
+                : (EVENT_TYPE_LABELS[event.event_type] ?? event.event_type)
               return (
                 <tr
                   key={event.id}
@@ -92,10 +121,10 @@ export function RecentEventsTable({ events }: Props) {
                     {formatRelativeTime(event.event_time)}
                   </td>
                   <td className="py-3 pr-4">
-                    <span className="text-[#64748b] capitalize">{event.event_type}</span>
+                    <span className="text-[#64748b]">{typeLabel}</span>
                   </td>
                   <td className="py-3 pr-4">
-                    <span className={`font-bold capitalize ${ac}`}>{event.action ?? '—'}</span>
+                    <span className={`font-bold ${ac.color}`}>{ac.label}</span>
                   </td>
                   <td className="py-3 pr-4 text-[#475569] font-mono">
                     {protocolLabel(event.protocol)}

@@ -1,4 +1,3 @@
-import { formatBytes } from '@/shared/lib/utils'
 import type { UserIpRow } from '@/features/dashboard/services/top-tables.service'
 import { User, MapPin, Cpu, Activity } from 'lucide-react'
 
@@ -7,7 +6,7 @@ interface Props {
 }
 
 export function UserIpTable({ data }: Props) {
-  const maxTraffic = data[0]?.traffic ?? 1
+  const maxSessions = data.reduce((m, r) => Math.max(m, r.sessions ?? 0), 1)
 
   return (
     <div className="glass rounded-2xl overflow-hidden">
@@ -16,7 +15,7 @@ export function UserIpTable({ data }: Props) {
         <div className="w-1 h-4 rounded-full bg-gradient-to-b from-[#8b5cf6] to-[#6d28d9]" />
         <User className="w-4 h-4 text-[#8b5cf6]" />
         <h2 className="font-bold text-white text-sm flex-1">Tráfico de Usuarios y Direcciones IP</h2>
-        <span className="text-[10px] font-bold text-[#334155] uppercase tracking-wider">Top {data.length} · 24h</span>
+        <span className="text-[10px] font-bold text-[#334155] uppercase tracking-wider">Top {data.length} usuarios</span>
       </div>
 
       {data.length === 0 ? (
@@ -40,15 +39,15 @@ export function UserIpTable({ data }: Props) {
                   <div className="flex items-center gap-1"><Cpu className="w-3 h-3" />Aplicación</div>
                 </th>
                 <th className="text-right px-5 py-3 text-[10px] font-bold text-[#334155] uppercase tracking-wider">
-                  <div className="flex items-center justify-end gap-1"><Activity className="w-3 h-3" />Tráfico</div>
+                  <div className="flex items-center justify-end gap-1"><Activity className="w-3 h-3" />Sesiones</div>
                 </th>
               </tr>
             </thead>
             <tbody>
               {data.map((row, i) => {
-                const pct = maxTraffic > 0 ? (row.traffic / maxTraffic) * 100 : 0
+                const pct = maxSessions > 0 ? ((row.sessions ?? 0) / maxSessions) * 100 : 0
                 const rankColor = i === 0 ? '#f59e0b' : i === 1 ? '#94a3b8' : i === 2 ? '#b45309' : '#334155'
-                const isAnon = row.user_name === 'Anónimo'
+                const isAnon = false
 
                 return (
                   <tr key={`${row.user_name}-${row.src_ip}-${i}`} className="border-b border-[#0a1628] last:border-0 hover:bg-[#060d1a]/60 transition-colors">
@@ -79,7 +78,7 @@ export function UserIpTable({ data }: Props) {
                     </td>
                     <td className="px-5 py-3 text-right">
                       <div className="flex flex-col items-end gap-1">
-                        <span className="text-sm font-bold text-[#8b5cf6] font-mono">{formatBytes(row.traffic)}</span>
+                        <span className="text-sm font-bold text-[#8b5cf6] font-mono">{(row.sessions ?? 0).toLocaleString()}</span>
                         <div className="h-1 w-20 bg-[#0a1628] rounded-full overflow-hidden">
                           <div
                             className="h-full rounded-full transition-all duration-500"

@@ -12,6 +12,7 @@ export interface UserIpRow {
   src_ip: string
   application: string
   traffic: number
+  sessions: number
 }
 
 const PORT_NAMES: Record<number, string> = {
@@ -69,30 +70,44 @@ export async function getUrlCategoryTable(orgId: string, hours = 24): Promise<Ur
 
 export async function getUserIpTable(orgId: string, hours = 24): Promise<UserIpRow[]> {
   const supabase = await createClient()
-  const since = new Date(Date.now() - hours * 3600_000).toISOString()
 
-  const { data } = await supabase
-    .from('firewall_events')
-    .select('user_name, src_ip, application, dst_port, bytes_sent, bytes_received')
-    .eq('org_id', orgId)
-    .gte('event_time', since)
-    .limit(5000)
+  // Try requested period first; fall back to 7 days if no identified users
+  for (const lookbackHours of [hours, Math.max(hours, 168)]) {
+    const since = new Date(Date.now() - lookbackHours * 3600_000).toISOString()
 
-  const map = new Map<string, UserIpRow>()
+    const { data } = await supabase
+      .from('firewall_events')
+      .select('user_name, src_ip, application, dst_port, bytes_sent, bytes_received')
+      .eq('org_id', orgId)
+      .gte('event_time', since)
+      .not('user_name', 'is', null)
+      .limit(8000)
 
-  for (const row of data ?? []) {
-    const user = row.user_name || 'Anónimo'
-    const ip   = row.src_ip    || 'N/A'
-    const app  = row.application
-      || (row.dst_port ? PORT_NAMES[Number(row.dst_port)] ?? `Puerto ${row.dst_port}` : 'N/A')
+    if (!data || data.length === 0) continue
 
-    const key = `${user}||${ip}||${app}`
-    const existing = map.get(key) ?? { user_name: user, src_ip: ip, application: app, traffic: 0 }
-    existing.traffic += (row.bytes_sent ?? 0) + (row.bytes_received ?? 0)
-    map.set(key, existing)
+    const map = new Map<string, { user_name: string; src_ip: string; application: string; traffic: number; sessions: number }>()
+
+    for (const row of data) {
+      const user = row.user_name!
+      const ip   = row.src_ip || 'N/A'
+      const app  = row.application
+        || (row.dst_port ? PORT_NAMES[Number(row.dst_port)] ?? `Puerto ${row.dst_port}` : 'N/A')
+
+      // Group by user + most common IP (use user as key, track latest IP)
+      const existing = map.get(user) ?? { user_name: user, src_ip: ip, application: app, traffic: 0, sessions: 0 }
+      existing.traffic  += (row.bytes_sent ?? 0) + (row.bytes_received ?? 0)
+      existing.sessions += 1
+      // Keep most common src_ip (overwrite — last wins; good enough for display)
+      existing.src_ip = ip
+      map.set(user, existing)
+    }
+
+    const result = Array.from(map.values())
+      .sort((a, b) => b.sessions - a.sessions)
+      .slice(0, 10)
+
+    if (result.length > 0) return result
   }
 
-  return Array.from(map.values())
-    .sort((a, b) => b.traffic - a.traffic)
-    .slice(0, 5)
+  return []
 }

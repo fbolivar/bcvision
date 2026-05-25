@@ -406,84 +406,87 @@ export function ReportPDF({ metrics, narrative, reportType, brandName, brandColo
       {isExec && (
         <>
           {/* PÁG 1: PORTADA ─────────────────────────────────── */}
-          <Page size="A4" style={[s.page, { backgroundColor: NP_PARCH }]}>
-            {/* Banda superior verde selva */}
-            <View style={{ height: 308, backgroundColor: NP_DARK, overflow: 'hidden', position: 'relative' }}>
-              {/* Silueta de montañas andinas */}
-              <Svg width={595} height={308} style={{ position: 'absolute', bottom: 0, left: 0 }}>
-                <Path d="M 0,308 L 0,228 L 72,182 L 142,222 L 208,152 L 280,200 L 342,132 L 414,178 L 476,112 L 542,158 L 595,98 L 595,308 Z"
-                  fill="rgba(255,255,255,0.04)" />
-                <Path d="M 0,308 L 0,258 L 58,238 L 118,254 L 178,208 L 248,238 L 308,192 L 378,224 L 438,182 L 508,210 L 595,172 L 595,308 Z"
-                  fill="rgba(255,255,255,0.06)" />
-              </Svg>
-              {/* Barra dorada izquierda */}
-              <View style={{ position: 'absolute', top: 0, left: 0, width: 5, height: '100%', backgroundColor: NP_GOLD }} />
-              <View style={{ paddingLeft: 52, paddingRight: 48, paddingTop: 40, paddingBottom: 26, flex: 1, justifyContent: 'space-between' }}>
-                {/* Marca */}
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                  {logoUrl ? <Image src={logoUrl} style={{ width: 42, height: 42, objectFit: 'contain' }} /> : null}
+          <Page size="A4" style={[s.page, { backgroundColor: NP_DARK }]}>
+            {/* Línea dorada superior */}
+            <View style={{ height: 3, backgroundColor: NP_GOLD }} />
+
+            <View style={{ flex: 1, paddingHorizontal: 50, paddingTop: 36, paddingBottom: 0 }}>
+
+              {/* Encabezado de marca */}
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 56 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 11 }}>
+                  {logoUrl ? (
+                    <View style={{ backgroundColor: WHITE, borderRadius: 7, width: 40, height: 40, alignItems: 'center', justifyContent: 'center' }}>
+                      <Image src={logoUrl} style={{ width: 30, height: 30, objectFit: 'contain' }} />
+                    </View>
+                  ) : null}
                   <View>
-                    <Text style={{ fontSize: 23, fontFamily: 'Helvetica-Bold', color: WHITE }}>{logoText}</Text>
-                    <Text style={{ fontSize: 7.5, color: 'rgba(255,255,255,0.50)', marginTop: 2 }}>
-                      Plataforma de Análisis de Seguridad · BC Fabric SAS
-                    </Text>
+                    <Text style={{ fontSize: 11, fontFamily: 'Helvetica-Bold', color: WHITE, letterSpacing: 0.6 }}>BCVision</Text>
+                    <Text style={{ fontSize: 6.5, color: NP_LIGHT, marginTop: 2 }}>Plataforma de Análisis de Seguridad · BC Fabric SAS</Text>
                   </View>
                 </View>
-                {/* Badge nivel de riesgo */}
-                {exec && (
-                  <View style={{ alignSelf: 'flex-start', borderRadius: 5, paddingVertical: 9, paddingHorizontal: 18, backgroundColor: riskColor, borderWidth: 1, borderColor: 'rgba(255,255,255,0.22)' }}>
-                    <Text style={{ fontSize: 6.5, color: 'rgba(255,255,255,0.62)', letterSpacing: 1.8, marginBottom: 3 }}>NIVEL DE RIESGO EVALUADO</Text>
-                    <Text style={{ fontSize: 27, fontFamily: 'Helvetica-Bold', color: WHITE }}>{exec.risk_level}</Text>
-                  </View>
-                )}
-                {/* Badge tipo reporte */}
-                <View style={{ borderRadius: 3, borderWidth: 1, borderColor: 'rgba(255,255,255,0.28)', alignSelf: 'flex-start', paddingVertical: 5, paddingHorizontal: 12, backgroundColor: 'rgba(255,255,255,0.07)' }}>
-                  <Text style={{ fontSize: 8, fontFamily: 'Helvetica-Bold', color: WHITE, letterSpacing: 2 }}>
-                    REPORTE EJECUTIVO DE SEGURIDAD
-                  </Text>
+                <View style={{ borderWidth: 1, borderColor: '#2a5c3a', borderRadius: 3, paddingVertical: 5, paddingHorizontal: 12 }}>
+                  <Text style={{ fontSize: 6.5, color: NP_LIGHT, letterSpacing: 2, fontFamily: 'Helvetica-Bold' }}>CONFIDENCIAL</Text>
                 </View>
               </View>
-            </View>
 
-            {/* Cuerpo blanco/pergamino */}
-            <View style={{ flex: 1, paddingLeft: 52, paddingRight: 48, paddingTop: 20 }}>
-              <Text style={{ fontSize: 20, fontFamily: 'Helvetica-Bold', color: NP_DARK }}>{orgName}</Text>
-              <View style={{ width: 30, height: 3, backgroundColor: NP_GOLD, marginTop: 7, borderRadius: 2 }} />
-              <Text style={{ fontSize: 8.5, color: GRAY, marginTop: 5, marginBottom: 16 }}>
-                Análisis de seguridad perimetral · {period.start} — {period.end} · {period.days} {period.days === 1 ? 'día' : 'días'}
+              {/* Etiqueta tipo de reporte */}
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                <View style={{ width: 2, height: 12, backgroundColor: NP_GOLD }} />
+                <Text style={{ fontSize: 7, color: NP_GOLD, letterSpacing: 2.5, fontFamily: 'Helvetica-Bold' }}>REPORTE EJECUTIVO DE SEGURIDAD</Text>
+              </View>
+
+              {/* Nombre de la organización */}
+              <Text style={{ fontSize: 30, fontFamily: 'Helvetica-Bold', color: WHITE, lineHeight: 1.2, marginBottom: 10 }}>{orgName}</Text>
+
+              {/* Período de análisis */}
+              <Text style={{ fontSize: 8.5, color: NP_LIGHT, marginBottom: 32 }}>
+                {period.start} — {period.end} · {period.days} {period.days === 1 ? 'día' : 'días'} de monitoreo continuo
               </Text>
+
+              {/* Divisor */}
+              <View style={{ height: 1, backgroundColor: '#1c4530', marginBottom: 26 }} />
+
+              {/* Nivel de riesgo + fecha generación */}
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 36 }}>
+                {exec ? (
+                  <View>
+                    <Text style={{ fontSize: 6, color: NP_LIGHT, letterSpacing: 2, marginBottom: 8, fontFamily: 'Helvetica-Bold' }}>NIVEL DE RIESGO EVALUADO</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                      <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: riskColor }} />
+                      <Text style={{ fontSize: 26, fontFamily: 'Helvetica-Bold', color: WHITE }}>{exec.risk_level}</Text>
+                    </View>
+                  </View>
+                ) : <View />}
+                <Text style={{ fontSize: 7.5, color: NP_LIGHT }}>Generado: {now}</Text>
+              </View>
+
               {/* KPI grid */}
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 7 }}>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
                 {([
-                  { v: formatNum(summary.total_events),  l: 'EVENTOS PROCESADOS',     c: NP_DARK, d: trends?.total_events_delta_pct ?? null, lib: true,  unit: '%'  },
-                  { v: `${summary.block_rate_pct}%`,     l: 'EFECTIVIDAD DE BLOQUEO', c: summary.block_rate_pct >= 80 ? NP_MED : NP_GOLD, d: trends?.block_rate_delta_pts ?? null, lib: false, unit: ' pts' },
-                  { v: formatNum(summary.threat_events), l: 'AMENAZAS DETECTADAS',    c: RED,     d: trends?.threats_delta_pct ?? null,      lib: true,  unit: '%'  },
-                  { v: String(severity_breakdown['critical'] ?? 0), l: 'EVENTOS CRÍTICOS', c: severity_breakdown['critical'] > 0 ? RED : NP_MED, d: trends?.critical_delta_pct ?? null, lib: true, unit: '%' },
-                  { v: String(summary.active_devices),   l: 'ACTIVOS MONITOREADOS',   c: NP_WATER, d: null, lib: true, unit: '%' },
+                  { v: formatNum(summary.total_events),  l: 'EVENTOS PROCESADOS',     c: NP_MED,    d: trends?.total_events_delta_pct ?? null, lib: true,  unit: '%'  },
+                  { v: `${summary.block_rate_pct}%`,     l: 'EFECTIVIDAD DE BLOQUEO', c: summary.block_rate_pct >= 80 ? NP_LIGHT : NP_GOLD, d: trends?.block_rate_delta_pts ?? null, lib: false, unit: ' pts' },
+                  { v: formatNum(summary.threat_events), l: 'AMENAZAS DETECTADAS',    c: '#d97070',  d: trends?.threats_delta_pct ?? null,      lib: true,  unit: '%'  },
+                  { v: String(severity_breakdown['critical'] ?? 0), l: 'EVENTOS CRÍTICOS', c: severity_breakdown['critical'] > 0 ? '#d97070' : NP_LIGHT, d: trends?.critical_delta_pct ?? null, lib: true, unit: '%' },
+                  { v: String(summary.active_devices),   l: 'ACTIVOS MONITOREADOS',   c: NP_WATER,  d: null, lib: true, unit: '%' },
                   ...(ipsecActiveCount > 0 ? [{ v: String(ipsecActiveCount), l: 'USUARIOS VPN IPSEC', c: NP_LIGHT, d: null, lib: true, unit: '%' }] : []),
                 ] as Array<{v:string;l:string;c:string;d:number|null;lib:boolean;unit:string}>).map((item, i) => (
-                  <View key={i} style={{ flex: 1, minWidth: '28%', borderRadius: 4, padding: '8 10', backgroundColor: `${item.c}12`, borderLeftWidth: 3, borderLeftColor: item.c }}>
-                    <Text style={{ fontSize: 16, fontFamily: 'Helvetica-Bold', color: item.c }}>{item.v}</Text>
+                  <View key={i} style={{ flex: 1, minWidth: '28%', backgroundColor: '#0e2e1c', borderRadius: 5, padding: '10 12', borderTopWidth: 2, borderTopColor: item.c }}>
+                    <Text style={{ fontSize: 17, fontFamily: 'Helvetica-Bold', color: WHITE }}>{item.v}</Text>
                     {item.d != null && (
                       <Text style={{ fontSize: 5.5, color: trendClr(item.d, item.lib), marginTop: 1 }}>
                         {trendTxt(item.d, item.unit)} vs período ant.
                       </Text>
                     )}
-                    <Text style={{ fontSize: 5.5, color: GRAY, marginTop: 2, letterSpacing: 0.4 }}>{item.l}</Text>
+                    <Text style={{ fontSize: 5.5, color: NP_LIGHT, marginTop: 3, letterSpacing: 0.4 }}>{item.l}</Text>
                   </View>
                 ))}
               </View>
+
             </View>
 
-            {/* Footer portada */}
-            <View style={{ paddingHorizontal: 48, paddingBottom: 20 }}>
-              <View style={{ height: 1, backgroundColor: LIGHT2, marginBottom: 9 }} />
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                <Text style={{ fontSize: 7.5, color: LGRAY }}>BC Fabric SAS</Text>
-                <Text style={{ fontSize: 7.5, color: LGRAY }}>Generado: {now}</Text>
-                <Text style={{ fontSize: 7.5, fontFamily: 'Helvetica-Bold', color: NP_DARK }}>CONFIDENCIAL</Text>
-              </View>
-            </View>
+            {/* Línea dorada inferior */}
+            <View style={{ height: 3, backgroundColor: NP_GOLD }} />
           </Page>
 
           {/* PÁG 2: ÍNDICE Y CONTEXTO ESTRATÉGICO ──────────── */}

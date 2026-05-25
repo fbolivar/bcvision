@@ -74,7 +74,8 @@ async function processMessage(raw: string, sourceIp: string) {
     const catdesc = pd?.['catdesc'] as string | undefined
     const isWebfilterCat = pd?.['subtype'] === 'webfilter'
       && catdesc && catdesc !== 'Unrated' && catdesc !== 'Unknown'
-    if (event.severity === 'critical' || event.severity === 'high' || isWebfilterCat) {
+    const isThreat = event.event_type === 'threat'
+    if (event.severity === 'critical' || event.severity === 'high' || isWebfilterCat || isThreat) {
       if (event.severity === 'critical' || event.severity === 'high')
         console.log(`[bcOS] 🚨 ${brand} | ${sourceIp} | ${event.event_type} | ${event.severity}`)
       const cfg = getConfig()

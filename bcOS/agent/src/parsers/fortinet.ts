@@ -47,9 +47,12 @@ function mapEventType(type: string, subtype: string): EventType {
 
 function mapSeverity(level: string | undefined): Severity {
   const map: Record<string, Severity> = {
+    // syslog priority levels
     emergency: 'critical', alert: 'critical', critical: 'critical',
     error: 'high', warning: 'medium', notice: 'low',
     information: 'info', debug: 'info',
+    // FortiGate direct severity values (IPS, virus, etc.)
+    high: 'high', medium: 'medium', low: 'low', info: 'info',
   }
   return map[level?.toLowerCase() ?? ''] ?? 'info'
 }
@@ -90,7 +93,7 @@ export function parsefortinet(msg: SyslogMessage): ParsedFirewallEvent {
     application: kv['app'] ?? kv['appcat'] ?? null,
     threat_name: kv['attack'] ?? kv['virus'] ?? kv['botnet'] ?? null,
     threat_category: kv['botnet'] ? 'botnet' : kv['attackid'] ? 'intrusion' : kv['virus'] ? 'malware' : null,
-    severity: isRealThreat ? 'high' : mapSeverity(kv['level']),
+    severity: isRealThreat ? mapSeverity(kv['severity'] ?? kv['level']) : mapSeverity(kv['level']),
     parsed_data: kv,
   }
 }

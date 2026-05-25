@@ -70,9 +70,32 @@ export async function getAppTrafficChart(orgId: string, hours = 24): Promise<Cha
 }
 
 export async function getUrlCategoryChart(orgId: string, hours = 24): Promise<ChartSegment[]> {
-  const rows = await fetchField(orgId, 'event_type', hours)
-  return aggregate(rows, 'event_type', EVENT_TYPE_LABELS)
-    .map((s, i) => ({ ...s, color: COLORS_B[i] ?? '#64748b' }))
+  const supabase = await createClient()
+  // Primero busca en el período solicitado; si no hay datos webfilter, amplía a 7 días
+  for (const lookbackHours of [hours, Math.max(hours, 168)]) {
+    const since = new Date(Date.now() - lookbackHours * 3_600_000).toISOString()
+    const { data } = await supabase
+      .from('firewall_events')
+      .select('parsed_data')
+      .eq('org_id', orgId)
+      .gte('event_time', since)
+      .not('parsed_data', 'is', null)
+      .limit(5000)
+
+    const counts: Record<string, number> = {}
+    for (const row of (data ?? [])) {
+      const pd = row.parsed_data as Record<string, unknown> | null
+      const catdesc = pd?.['catdesc'] as string | undefined
+      if (!catdesc || catdesc === 'Unrated' || catdesc === 'Unknown') continue
+      counts[catdesc] = (counts[catdesc] ?? 0) + 1
+    }
+
+    const entries = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 6)
+    if (entries.length > 0) {
+      return entries.map(([label, value], i) => ({ label, value, color: COLORS_B[i] ?? '#64748b' }))
+    }
+  }
+  return []
 }
 
 export async function getSrcIpChart(orgId: string, hours = 24): Promise<ChartSegment[]> {

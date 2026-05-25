@@ -106,7 +106,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <DonutChartWidget title="Aplicaciones" data={appChart} />
-            <DonutChartWidget title="Categorías de URL" data={urlChart} />
+            <DonutChartWidget title="Categorías Web" data={urlChart} />
             <DonutChartWidget title="IPs Origen" data={srcIpChart} />
             <DonutChartWidget title="IPs Destino" data={dstIpChart} />
           </div>

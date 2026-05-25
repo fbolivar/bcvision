@@ -7,6 +7,36 @@ import { Zap, Radio, ArrowRight } from 'lucide-react'
 
 const MAX_VISIBLE = 5
 
+const ACTION_LABELS: Record<string, { label: string; color: string }> = {
+  allow:       { label: 'Permitido',  color: 'text-[#4ade80]' },
+  deny:        { label: 'Denegado',   color: 'text-[#f87171]' },
+  drop:        { label: 'Descartado', color: 'text-[#f87171]' },
+  reset:       { label: 'Reset',      color: 'text-[#fbbf24]' },
+  monitor:     { label: 'Monitor',    color: 'text-[#60a5fa]' },
+  redirect:    { label: 'Redirigido', color: 'text-[#a78bfa]' },
+  passthrough: { label: 'Permitido',  color: 'text-[#4ade80]' },
+  blocked:     { label: 'Denegado',   color: 'text-[#f87171]' },
+}
+
+const SUBTYPE_LABELS: Record<string, string> = {
+  webfilter:  'Web Filter',
+  'app-ctrl': 'App Control',
+  ips:        'IPS',
+  virus:      'Antivirus',
+  anomaly:    'Anomalía',
+  vpn:        'VPN',
+  system:     'Sistema',
+  user:       'Usuario',
+}
+
+const TYPE_LABELS: Record<string, string> = {
+  traffic: 'Tráfico',
+  threat:  'Amenaza',
+  vpn:     'VPN',
+  system:  'Sistema',
+  auth:    'Auth',
+}
+
 const sevColor: Record<string, { dot: string; badge: string }> = {
   critical: { dot: '#ef4444', badge: 'text-[#f87171] bg-[#ef4444]/10' },
   high:     { dot: '#f97316', badge: 'text-[#fb923c] bg-[#f97316]/10' },
@@ -60,6 +90,13 @@ export function LiveEventsWidget({ orgId }: { orgId: string }) {
             <div className="divide-y divide-[#0a1628]">
               {events.slice(0, MAX_VISIBLE).map((event, i) => {
                 const sc = sevColor[event.severity] ?? sevColor.info
+                const pd = event.parsed_data as Record<string, unknown> | null
+                const subtype = pd?.['subtype'] as string | undefined
+                const typeLabel = subtype
+                  ? (SUBTYPE_LABELS[subtype] ?? subtype)
+                  : (TYPE_LABELS[event.event_type] ?? event.event_type)
+                const rawAction = (event.action ?? (pd?.['action'] as string | undefined) ?? '').toLowerCase()
+                const ac = ACTION_LABELS[rawAction]
                 return (
                   <div key={event.id}
                     className="px-4 py-2.5 hover:bg-[#0d1a2e]/80 transition-colors animate-fade-in"
@@ -69,7 +106,10 @@ export function LiveEventsWidget({ orgId }: { orgId: string }) {
                         <div className="flex items-center gap-1.5 mb-1">
                           <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: sc.dot, boxShadow: `0 0 4px ${sc.dot}` }} />
                           <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${sc.badge}`}>{event.severity}</span>
-                          <span className="text-[10px] text-[#475569] capitalize">{event.event_type}</span>
+                          <span className="text-[10px] text-[#475569]">{typeLabel}</span>
+                          {ac && (
+                            <span className={`text-[10px] font-semibold ${ac.color}`}>{ac.label}</span>
+                          )}
                         </div>
                         <p className="text-[10px] text-[#334155] font-mono truncate">
                           {event.src_ip ?? '—'} → {event.dst_ip ?? '—'}

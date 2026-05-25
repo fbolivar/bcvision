@@ -14,10 +14,10 @@ export interface FgVpnSession {
 // FortiGate devuelve certs auto-firmados — deshabilitar verificación solo para la API interna
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0'
 
-export async function fetchActiveSslVpnSessions(cfg: AgentConfig): Promise<FgVpnSession[]> {
+export async function fetchActiveIpsecVpnSessions(cfg: AgentConfig): Promise<FgVpnSession[]> {
   if (!cfg.fortigate_ip || !cfg.fortigate_api_token) return []
 
-  const url = `https://${cfg.fortigate_ip}/api/v2/monitor/vpn/ssl`
+  const url = `https://${cfg.fortigate_ip}/api/v2/monitor/vpn/ipsec`
 
   const res = await fetch(url, {
     headers: {
@@ -32,18 +32,24 @@ export async function fetchActiveSslVpnSessions(cfg: AgentConfig): Promise<FgVpn
   const data = await res.json() as { results?: Record<string, unknown>[] }
   const results = data.results ?? []
 
-  return results.map(r => ({
-    user_name:    String(r['user_name'] ?? r['username'] ?? ''),
-    remote_ip:    String(r['remote_host'] ?? r['remip'] ?? ''),
-    tunnel_ip:    String(r['tunnel_ip']   ?? r['tunnelip'] ?? ''),
-    duration_sec: Number(r['duration']    ?? 0),
-    bytes_tx:     Number(r['bandwidth'] && typeof r['bandwidth'] === 'object'
-                    ? (r['bandwidth'] as Record<string,number>)['tx'] ?? 0 : 0),
-    bytes_rx:     Number(r['bandwidth'] && typeof r['bandwidth'] === 'object'
-                    ? (r['bandwidth'] as Record<string,number>)['rx'] ?? 0 : 0),
-    os_name:      String(r['os_name'] ?? ''),
-    tunnel_type:  String(r['type'] ?? 'ssl'),
-  })).filter(s => s.user_name)
+  const nowSec = Math.floor(Date.now() / 1000)
+
+  return results
+    .filter(r => r['type'] === 'dialup' || r['username'] || r['user'])
+    .map(r => {
+      const createdAt = Number(r['creation_time'] ?? r['created'] ?? 0)
+      return {
+        user_name:    String(r['username'] ?? r['user'] ?? r['name'] ?? ''),
+        remote_ip:    String(r['rgwy'] ?? r['remote_gateway'] ?? r['remip'] ?? ''),
+        tunnel_ip:    String(r['tun_ip'] ?? r['tunnel_ip'] ?? ''),
+        duration_sec: createdAt > 0 ? Math.max(0, nowSec - createdAt) : 0,
+        bytes_tx:     Number(r['outgoing_bytes'] ?? r['bytes_tx'] ?? 0),
+        bytes_rx:     Number(r['incoming_bytes']  ?? r['bytes_rx'] ?? 0),
+        os_name:      '',
+        tunnel_type:  'ipsec',
+      }
+    })
+    .filter(s => s.user_name)
 }
 
 export async function pushVpnSessionsToBcvision(
@@ -66,9 +72,9 @@ export async function pushVpnSessionsToBcvision(
 export function startFortigatePoller(cfg: AgentConfig): void {
   async function poll() {
     try {
-      const sessions = await fetchActiveSslVpnSessions(cfg)
+      const sessions = await fetchActiveIpsecVpnSessions(cfg)
       await pushVpnSessionsToBcvision(cfg, sessions)
-      console.log(`[bcOS] VPN: ${sessions.length} sesiones activas enviadas a BCVision`)
+      console.log(`[bcOS] VPN IPsec: ${sessions.length} sesiones activas enviadas a BCVision`)
     } catch (err) {
       console.warn(`[bcOS] FortiGate API error: ${(err as Error).message}`)
     }

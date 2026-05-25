@@ -1,9 +1,9 @@
 import { createClient } from '@/lib/supabase/server'
 import { Topbar } from '@/shared/components/topbar'
 import { LiveRefresh } from '@/shared/components/live-refresh'
-import { getVpnStats, getVpnUsers, getVpnSessions, getVpnFailedLogins, getVpnActiveSessions, getVpnMigrationStatus } from '@/features/vpn/services/vpn.service'
+import { getVpnStats, getVpnUsers, getVpnSessions, getVpnFailedLogins, getVpnActiveSessions } from '@/features/vpn/services/vpn.service'
 import { formatBytes, formatNumber } from '@/shared/lib/utils'
-import { Shield, Users, Wifi, AlertTriangle, Clock, XCircle, Radio, ArrowRight, CheckCircle2, Loader2 } from 'lucide-react'
+import { Shield, Users, Wifi, AlertTriangle, Clock, XCircle, Radio } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
 
@@ -16,13 +16,12 @@ export default async function VpnPage() {
   const { data: profile } = await supabase.from('users').select('org_id').eq('id', user!.id).single()
   const orgId = profile?.org_id ?? ''
 
-  const [stats, vpnUsers, sessions, failedLogins, activeSessions, migration] = await Promise.all([
+  const [stats, vpnUsers, sessions, failedLogins, activeSessions] = await Promise.all([
     getVpnStats(orgId, hours),
     getVpnUsers(orgId, hours),
     getVpnSessions(orgId, hours, 30),
     getVpnFailedLogins(orgId, hours),
     getVpnActiveSessions(orgId),
-    getVpnMigrationStatus(orgId, 30),
   ])
 
   const statCards = [
@@ -32,22 +31,6 @@ export default async function VpnPage() {
     { label: 'Datos transferidos', value: formatBytes(stats.bytes_total),     icon: Shield,  color: '#22c55e' },
   ]
 
-  const migTotal = migration.summary.ssl_users + migration.summary.ipsec_users + migration.summary.migrating_users
-  const migPct   = migTotal > 0 ? Math.round(((migration.summary.ipsec_users + migration.summary.migrating_users) / migTotal) * 100) : 0
-
-  const statusLabel: Record<string, string> = {
-    ssl_only:  'SSL',
-    ipsec_only: 'IPsec ✓',
-    migrating: 'Migrando',
-    unknown:   '—',
-  }
-  const statusColors: Record<string, { bg: string; text: string }> = {
-    ssl_only:  { bg: 'bg-[#f97316]/15', text: 'text-[#fb923c]' },
-    ipsec_only:{ bg: 'bg-[#22c55e]/15', text: 'text-[#4ade80]' },
-    migrating: { bg: 'bg-[#3b82f6]/15', text: 'text-[#60a5fa]' },
-    unknown:   { bg: 'bg-[#334155]/40', text: 'text-[#475569]' },
-  }
-
   return (
     <div className="flex flex-col flex-1 min-h-0">
       <LiveRefresh enabled={false} />
@@ -55,7 +38,7 @@ export default async function VpnPage() {
 
       <div className="flex-1 p-6 space-y-5 overflow-y-auto mesh-bg">
 
-        {/* Sesiones activas AHORA */}
+        {/* Conectados ahora — IPsec */}
         {activeSessions.length > 0 && (
           <div className="glass rounded-2xl overflow-hidden border border-[#22c55e]/20">
             <div className="flex items-center gap-2 px-5 py-3 border-b border-[#0f2038] bg-[#22c55e]/5">
@@ -64,14 +47,14 @@ export default async function VpnPage() {
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-[#22c55e]" />
               </span>
               <Radio className="w-3.5 h-3.5 text-[#22c55e]" />
-              <h2 className="font-bold text-white text-sm">Conectados ahora</h2>
+              <h2 className="font-bold text-white text-sm">Conectados ahora · IPsec</h2>
               <span className="ml-auto text-[10px] font-bold text-[#22c55e] bg-[#22c55e]/10 border border-[#22c55e]/20 px-2 py-0.5 rounded-full">{activeSessions.length} usuarios</span>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-xs">
                 <thead>
                   <tr className="border-b border-[#0a1628]">
-                    {['Usuario', 'IP Remota', 'IP Túnel', 'Duración', 'Transferido', 'OS'].map(h => (
+                    {['Usuario', 'IP Remota', 'IP Túnel', 'Duración', 'Transferido'].map(h => (
                       <th key={h} className="px-5 py-2.5 text-left font-bold text-[#1e3a5f] uppercase tracking-widest whitespace-nowrap">{h}</th>
                     ))}
                   </tr>
@@ -93,7 +76,6 @@ export default async function VpnPage() {
                         <td className="px-5 py-2.5 text-[#475569] font-mono text-[10px]">{s.tunnel_ip ?? '—'}</td>
                         <td className="px-5 py-2.5 text-[#94a3b8]">{s.duration_sec > 0 ? dur : '—'}</td>
                         <td className="px-5 py-2.5 text-[#475569]">{formatBytes(s.bytes_tx + s.bytes_rx)}</td>
-                        <td className="px-5 py-2.5 text-[#334155]">{s.os_name ?? '—'}</td>
                       </tr>
                     )
                   })}
@@ -120,107 +102,6 @@ export default async function VpnPage() {
             </div>
           ))}
         </div>
-
-        {/* ── Migración SSL → IPsec ─────────────────────────────────────────────── */}
-        {migration.users.length > 0 && (
-          <div className="glass rounded-2xl overflow-hidden border border-[#3b82f6]/20">
-            <div className="flex items-center gap-2 px-5 py-4 border-b border-[#0f2038] bg-[#3b82f6]/5">
-              <div className="w-1 h-4 rounded-full bg-gradient-to-b from-[#f97316] to-[#3b82f6]" />
-              <ArrowRight className="w-4 h-4 text-[#60a5fa]" />
-              <h2 className="font-bold text-white text-sm">Migración SSL → IPsec</h2>
-              <span className="ml-auto text-[10px] font-bold text-[#475569] uppercase tracking-wider">últimos 30 días</span>
-            </div>
-
-            {/* Progress bar + stat cards */}
-            <div className="px-5 pt-5 pb-3 space-y-4">
-              {/* Barra de progreso general */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-[10px] text-[#475569] uppercase tracking-wider font-bold">Progreso de migración</span>
-                  <span className="text-sm font-bold text-white">{migPct}%</span>
-                </div>
-                <div className="w-full bg-[#060a12] rounded-full h-2 overflow-hidden">
-                  <div className="h-2 rounded-full transition-all duration-700"
-                    style={{ width: `${migPct}%`, background: 'linear-gradient(90deg, #f97316, #3b82f6, #22c55e)' }} />
-                </div>
-                <div className="flex items-center justify-between mt-1.5">
-                  <span className="text-[9px] text-[#f97316]">SSL: {migration.summary.ssl_sessions} sesiones</span>
-                  <span className="text-[9px] text-[#22c55e]">IPsec: {migration.summary.ipsec_sessions} sesiones</span>
-                </div>
-              </div>
-
-              {/* Mini stat cards: SSL / Migrando / IPsec */}
-              <div className="grid grid-cols-3 gap-3">
-                <div className="bg-[#f97316]/10 border border-[#f97316]/20 rounded-xl p-3 text-center">
-                  <p className="text-xl font-bold text-[#fb923c] tabular-nums">{migration.summary.ssl_users}</p>
-                  <p className="text-[9px] text-[#475569] uppercase tracking-wider mt-1">Solo SSL</p>
-                  <p className="text-[9px] text-[#334155] mt-0.5">pendientes de migrar</p>
-                </div>
-                <div className="bg-[#3b82f6]/10 border border-[#3b82f6]/20 rounded-xl p-3 text-center">
-                  <p className="text-xl font-bold text-[#60a5fa] tabular-nums">{migration.summary.migrating_users}</p>
-                  <p className="text-[9px] text-[#475569] uppercase tracking-wider mt-1">Migrando</p>
-                  <p className="text-[9px] text-[#334155] mt-0.5">usan ambos protocolos</p>
-                </div>
-                <div className="bg-[#22c55e]/10 border border-[#22c55e]/20 rounded-xl p-3 text-center">
-                  <p className="text-xl font-bold text-[#4ade80] tabular-nums">{migration.summary.ipsec_users}</p>
-                  <p className="text-[9px] text-[#475569] uppercase tracking-wider mt-1">IPsec ✓</p>
-                  <p className="text-[9px] text-[#334155] mt-0.5">migración completa</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Tabla por usuario */}
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs">
-                <thead>
-                  <tr className="border-b border-[#0a1628]">
-                    {['Usuario', 'Estado', 'Sesiones SSL', 'Sesiones IPsec', 'Último SSL', 'Primer IPsec'].map(h => (
-                      <th key={h} className="px-5 py-3 text-left font-bold text-[#1e3a5f] uppercase tracking-widest whitespace-nowrap">{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {migration.users.map(u => {
-                    const sc = statusColors[u.status] ?? statusColors.unknown
-                    return (
-                      <tr key={u.user_name} className="border-b border-[#0a1628] hover:bg-[#0d1a2e]/60 transition-colors group">
-                        <td className="px-5 py-2.5">
-                          <div className="flex items-center gap-2">
-                            <div className="w-6 h-6 rounded-lg bg-[#3b82f6]/15 border border-[#3b82f6]/25 flex items-center justify-center text-[9px] font-bold text-[#60a5fa]">
-                              {u.user_name[0]?.toUpperCase()}
-                            </div>
-                            <span className="text-[#94a3b8] group-hover:text-white transition-colors">{u.user_name}</span>
-                          </div>
-                        </td>
-                        <td className="px-5 py-2.5">
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${sc.bg} ${sc.text}`}>
-                            {statusLabel[u.status]}
-                          </span>
-                        </td>
-                        <td className="px-5 py-2.5 tabular-nums">
-                          {u.ssl_sessions > 0
-                            ? <span className="text-[#fb923c] font-bold">{formatNumber(u.ssl_sessions)}</span>
-                            : <span className="text-[#1e3a5f]">—</span>}
-                        </td>
-                        <td className="px-5 py-2.5 tabular-nums">
-                          {u.ipsec_sessions > 0
-                            ? <span className="text-[#4ade80] font-bold">{formatNumber(u.ipsec_sessions)}</span>
-                            : <span className="text-[#1e3a5f]">—</span>}
-                        </td>
-                        <td className="px-5 py-2.5 text-[#334155] font-mono text-[10px]">
-                          {u.last_ssl ? new Date(u.last_ssl).toLocaleDateString('es-CO', { month: 'short', day: 'numeric' }) : '—'}
-                        </td>
-                        <td className="px-5 py-2.5 text-[#334155] font-mono text-[10px]">
-                          {u.last_ipsec ? new Date(u.last_ipsec).toLocaleDateString('es-CO', { month: 'short', day: 'numeric' }) : '—'}
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
 
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
 

@@ -64,7 +64,7 @@ export function parsefortinet(msg: SyslogMessage): ParsedFirewallEvent {
   const subtype = kv['subtype'] ?? ''
   const isVpn = kv['type'] === 'event' && subtype === 'vpn'
   // Amenaza real = virus, IPS, botnet — NO app-ctrl ni webfilter
-  const isRealThreat = !!(kv['attack'] || kv['virus'] || kv['botnet'] ||
+  const isRealThreat = !!(kv['attack'] || kv['threat'] || kv['virus'] || kv['botnet'] ||
     (kv['type'] === 'utm' && (subtype === 'virus' || subtype === 'intrusion' || subtype === 'anomaly' || subtype === 'ips')))
 
   const srcCountry = kv['srccountry']
@@ -90,9 +90,9 @@ export function parsefortinet(msg: SyslogMessage): ParsedFirewallEvent {
     duration_ms: kv['duration'] ? parseInt(kv['duration'], 10) * 1000 : null,
     user_name: userName,
     url: (kv['url'] && kv['url'] !== '/') ? kv['url'] : (kv['hostname'] ?? null),
-    application: kv['app'] ?? kv['appcat'] ?? null,
-    threat_name: kv['attack'] ?? kv['virus'] ?? kv['botnet'] ?? null,
-    threat_category: kv['botnet'] ? 'botnet' : kv['attackid'] ? 'intrusion' : kv['virus'] ? 'malware' : null,
+    application: kv['app'] ?? kv['appname'] ?? kv['appcat'] ?? kv['catdesc'] ?? null,
+    threat_name: kv['attack'] ?? kv['threat'] ?? kv['virus'] ?? kv['botnet'] ?? null,
+    threat_category: kv['botnet'] ? 'botnet' : (kv['attackid'] || kv['attack']) ? 'intrusion' : kv['threat'] ? 'intrusion' : kv['virus'] ? 'malware' : null,
     severity: isRealThreat ? mapSeverity(kv['severity'] ?? kv['level']) : mapSeverity(kv['level']),
     parsed_data: kv,
   }

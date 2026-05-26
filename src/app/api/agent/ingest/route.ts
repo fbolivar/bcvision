@@ -65,25 +65,49 @@ export async function POST(req: NextRequest) {
   const d = parsed.data
   const orgId    = keyRecord.org_id
   const deviceId = keyRecord.device_id
+  const ev       = d.event
 
-  // ── Save raw syslog ─────────────────────────────────────────────
-  const { data: rawRecord, error: rawError } = await supabase
-    .from('syslog_raw')
-    .insert({
-      org_id:      orgId,
-      device_id:   deviceId,
-      raw_message: d.raw_message,
-      source_ip:   d.source_ip,
-      facility:    d.facility,
-      severity:    d.severity,
-      received_at: d.received_at,
-    })
-    .select('id')
-    .single()
+  // ── Filtro de ingesta: solo eventos con valor en la nube ────────
+  // Tráfico rutinario permitido (allow/monitor, severidad low/info) se
+  // almacena localmente en bcOS pero NO sube a Supabase para evitar costos.
+  const isRoutineTraffic =
+    ev.event_type === 'traffic' &&
+    (ev.action === 'allow' || ev.action === 'monitor') &&
+    (ev.severity === 'low' || ev.severity === 'info')
 
-  if (rawError) {
-    console.error('[agent/ingest] syslog_raw error:', rawError.message)
-    return NextResponse.json({ error: 'DB error' }, { status: 500 })
+  if (isRoutineTraffic) {
+    // Actualizar last_seen del dispositivo y responder OK sin guardar el evento
+    if (deviceId) {
+      await supabase.from('devices')
+        .update({ last_seen: new Date().toISOString(), ip_address: d.source_ip })
+        .eq('id', deviceId)
+    }
+    return NextResponse.json({ ok: true, stored: false })
+  }
+
+  // ── Save raw syslog (solo para amenazas y severidad alta/crítica) ─
+  let rawId: string | null = null
+  const saveRaw = ev.event_type === 'threat' ||
+                  ev.severity === 'critical' ||
+                  ev.severity === 'high'
+
+  if (saveRaw) {
+    const { data: rawRecord, error: rawError } = await supabase
+      .from('syslog_raw')
+      .insert({
+        org_id:      orgId,
+        device_id:   deviceId,
+        raw_message: d.raw_message,
+        source_ip:   d.source_ip,
+        facility:    d.facility,
+        severity:    d.severity,
+        received_at: d.received_at,
+      })
+      .select('id')
+      .single()
+
+    if (rawError) console.error('[agent/ingest] syslog_raw error:', rawError.message)
+    else rawId = rawRecord?.id ?? null
   }
 
   // ── Save parsed event ───────────────────────────────────────────
@@ -92,10 +116,10 @@ export async function POST(req: NextRequest) {
     .insert({
       org_id:    orgId,
       device_id: deviceId,
-      raw_id:    rawRecord?.id ?? null,
+      raw_id:    rawId,
       event_time: d.received_at,
-      firewall_rule: d.event.firewall_rule ?? null,
-      ...d.event,
+      firewall_rule: ev.firewall_rule ?? null,
+      ...ev,
     })
 
   if (evtError) {
@@ -121,7 +145,6 @@ export async function POST(req: NextRequest) {
     .eq('id', keyRecord.id)
 
   // ── Auto-create alert (solo amenazas accionables) ───────────────
-  const ev = d.event
   const isNamedThreat   = ev.event_type === 'threat' && !!ev.threat_name
   const isMalwareBotnet = ['malware', 'botnet', 'virus'].includes(ev.threat_category ?? '')
   const isAuthFail      = ev.event_type === 'auth' && ev.action === 'deny'

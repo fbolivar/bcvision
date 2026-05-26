@@ -27,8 +27,24 @@ try {
     brandMap = JSON.parse(fs.readFileSync(BRAND_MAP_PATH, 'utf8')) as Record<string, FirewallBrand>
 } catch { /* fallback to generic */ }
 
-function getBrand(ip: string): FirewallBrand {
-  return brandMap[ip] ?? 'generic'
+function detectBrand(raw: string): FirewallBrand | null {
+  // FortiGate: key=value format with FortiGate-specific fields
+  if (/\btype=(traffic|utm|event)\b/.test(raw) && /\b(?:srcip|devname|logid)=/.test(raw)) return 'fortinet'
+  // Cisco ASA/FWSM/PIX
+  if (/%ASA-|%FWSM-|%PIX-/.test(raw)) return 'cisco'
+  // pfSense filterlog
+  if (/\bfilterlog\b/.test(raw)) return 'pfsense'
+  // Sophos SFOS
+  if (/\bSFOS\b/.test(raw)) return 'sophos'
+  // Palo Alto CSV format (timestamp,serial,type,...)
+  if (/\d{4}\/\d{2}\/\d{2}\s+\d{2}:\d{2}:\d{2},\S+,(TRAFFIC|THREAT|CONFIG|SYSTEM)/.test(raw)) return 'paloalto'
+  // MikroTik
+  if (/\btopic=firewall\b/.test(raw) || /mikrotik/i.test(raw)) return 'mikrotik'
+  return null
+}
+
+function getBrand(ip: string, raw: string): FirewallBrand {
+  return brandMap[ip] ?? detectBrand(raw) ?? 'generic'
 }
 
 // ── Rule derivation ───────────────────────────────────────────────
@@ -62,7 +78,7 @@ async function processMessage(raw: string, sourceIp: string) {
   const syslogMsg = parseSyslogMessage(raw.trim(), sourceIp)
   if (!syslogMsg) return
 
-  const brand  = getBrand(sourceIp)
+  const brand  = getBrand(sourceIp, raw)
   const parser = getParser(brand)
   const event  = parser(syslogMsg)
   event.firewall_rule = deriveRule(event)
@@ -123,12 +139,12 @@ function startTcpServer(port: number) {
   return server
 }
 
-// ── Daily cleanup (retention) ─────────────────────────────────────
+// ── Periodic cleanup (retention) ──────────────────────────────────
 function scheduleCleanup() {
-  const RETENTION_DAYS = parseInt(process.env.BCOS_RETENTION_DAYS ?? '365', 10)
-  // Run once at startup, then every 24h
+  const RETENTION_DAYS = parseFloat(process.env.BCOS_RETENTION_DAYS ?? '1')
+  // Run once at startup, then every 6h
   cleanOldEvents(RETENTION_DAYS)
-  setInterval(() => cleanOldEvents(RETENTION_DAYS), 24 * 60 * 60_000)
+  setInterval(() => cleanOldEvents(RETENTION_DAYS), 6 * 60 * 60_000)
 }
 
 // ── Main ──────────────────────────────────────────────────────────

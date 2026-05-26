@@ -5,7 +5,18 @@ const dotenv = require('dotenv') as { config: () => void }
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import { parseSyslogMessage } from './syslog-parser'
 import { getParser } from './parsers'
-import type { DeviceRecord } from './types'
+import type { DeviceRecord, FirewallBrand } from './types'
+
+// Auto-detección de marca cuando el campo brand en BD es genérico o incorrecto
+function detectBrand(raw: string): FirewallBrand | null {
+  if (/\btype=(traffic|utm|event)\b/.test(raw) && /\b(?:srcip|devname|logid)=/.test(raw)) return 'fortinet'
+  if (/%ASA-|%FWSM-|%PIX-/.test(raw)) return 'cisco'
+  if (/\bfilterlog\b/.test(raw)) return 'pfsense'
+  if (/\bSFOS\b/.test(raw)) return 'sophos'
+  if (/\d{4}\/\d{2}\/\d{2}\s+\d{2}:\d{2}:\d{2},\S+,(TRAFFIC|THREAT|CONFIG|SYSTEM)/.test(raw)) return 'paloalto'
+  if (/\btopic=firewall\b/.test(raw) || /mikrotik/i.test(raw)) return 'mikrotik'
+  return null
+}
 
 dotenv.config()
 
@@ -74,8 +85,15 @@ async function processMessage(raw: string, sourceIp: string) {
     return
   }
 
-  // 2. Parsear según fabricante
-  const parser = getParser(device.brand)
+  // 2. Parsear según fabricante — auto-detectar si el brand en BD es 'generic' o no reconocido
+  const knownBrands: FirewallBrand[] = ['fortinet', 'cisco', 'pfsense', 'sophos', 'paloalto', 'mikrotik']
+  const effectiveBrand: FirewallBrand = knownBrands.includes(device.brand)
+    ? device.brand
+    : (detectBrand(raw) ?? device.brand)
+  if (effectiveBrand !== device.brand) {
+    console.log(`[FirewallIQ] Brand auto-detectado: DB="${device.brand}" → detectado="${effectiveBrand}" (${sourceIp})`)
+  }
+  const parser = getParser(effectiveBrand)
   const event = parser(syslogMsg)
 
   // 3. Derivar regla de firewall desde los campos del evento
